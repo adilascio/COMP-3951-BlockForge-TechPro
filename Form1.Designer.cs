@@ -30,6 +30,9 @@
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             flowLayoutPanel1 = new FlowLayoutPanel();
+            Block1 = new Panel();
+            panel1 = new Panel();
+            panel2 = new Panel();
             menuStrip1 = new MenuStrip();
             fileToolStripMenuItem = new ToolStripMenuItem();
             newToolStripMenuItem = new ToolStripMenuItem();
@@ -63,20 +66,55 @@
             groupBox1 = new GroupBox();
             groupBox2 = new GroupBox();
             groupBox3 = new GroupBox();
-            groupBox4 = new GroupBox();
-            groupBox5 = new GroupBox();
+            groupBoxBlockBin = new GroupBox();
+            groupBoxWorkSpace = new GroupBox();
+            flowLayoutPanel1.SuspendLayout();
             menuStrip1.SuspendLayout();
             groupBox2.SuspendLayout();
-            groupBox4.SuspendLayout();
+            groupBoxBlockBin.SuspendLayout();
             SuspendLayout();
             // 
             // flowLayoutPanel1
             // 
+            flowLayoutPanel1.Controls.Add(Block1);
+            flowLayoutPanel1.Controls.Add(panel1);
+            flowLayoutPanel1.Controls.Add(panel2);
             flowLayoutPanel1.Location = new Point(12, 26);
             flowLayoutPanel1.Name = "flowLayoutPanel1";
+            flowLayoutPanel1.Padding = new Padding(10, 0, 0, 0);
             flowLayoutPanel1.Size = new Size(582, 121);
             flowLayoutPanel1.TabIndex = 0;
             flowLayoutPanel1.Paint += flowLayoutPanel1_Paint;
+            // 
+            // Block1
+            // 
+            Block1.Anchor = AnchorStyles.Top;
+            Block1.BackColor = Color.FromArgb(128, 255, 255);
+            Block1.Location = new Point(13, 3);
+            Block1.Name = "Block1";
+            Block1.Padding = new Padding(10);
+            Block1.Size = new Size(61, 46);
+            Block1.TabIndex = 0;
+            // 
+            // panel1
+            // 
+            panel1.Anchor = AnchorStyles.Top;
+            panel1.BackColor = Color.FromArgb(255, 192, 128);
+            panel1.Location = new Point(80, 3);
+            panel1.Name = "panel1";
+            panel1.Padding = new Padding(10);
+            panel1.Size = new Size(61, 46);
+            panel1.TabIndex = 1;
+            // 
+            // panel2
+            // 
+            panel2.Anchor = AnchorStyles.Top;
+            panel2.BackColor = Color.FromArgb(128, 128, 255);
+            panel2.Location = new Point(147, 3);
+            panel2.Name = "panel2";
+            panel2.Padding = new Padding(10);
+            panel2.Size = new Size(61, 46);
+            panel2.TabIndex = 2;
             // 
             // menuStrip1
             // 
@@ -104,7 +142,7 @@
             newToolStripMenuItem.ImageTransparentColor = Color.Magenta;
             newToolStripMenuItem.Name = "newToolStripMenuItem";
             newToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.N;
-            newToolStripMenuItem.Size = new Size(32, 19);
+            newToolStripMenuItem.Size = new Size(224, 26);
             newToolStripMenuItem.Text = "&New";
             // 
             // openToolStripMenuItem
@@ -113,13 +151,13 @@
             openToolStripMenuItem.ImageTransparentColor = Color.Magenta;
             openToolStripMenuItem.Name = "openToolStripMenuItem";
             openToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.O;
-            openToolStripMenuItem.Size = new Size(32, 19);
+            openToolStripMenuItem.Size = new Size(224, 26);
             openToolStripMenuItem.Text = "&Open";
             // 
             // toolStripSeparator
             // 
             toolStripSeparator.Name = "toolStripSeparator";
-            toolStripSeparator.Size = new Size(6, 6);
+            toolStripSeparator.Size = new Size(221, 6);
             // 
             // saveToolStripMenuItem
             // 
@@ -127,19 +165,20 @@
             saveToolStripMenuItem.ImageTransparentColor = Color.Magenta;
             saveToolStripMenuItem.Name = "saveToolStripMenuItem";
             saveToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.S;
-            saveToolStripMenuItem.Size = new Size(32, 19);
+            saveToolStripMenuItem.Size = new Size(224, 26);
             saveToolStripMenuItem.Text = "&Save";
+            saveToolStripMenuItem.Click += saveToolStripMenuItem_Click;
             // 
             // saveAsToolStripMenuItem
             // 
             saveAsToolStripMenuItem.Name = "saveAsToolStripMenuItem";
-            saveAsToolStripMenuItem.Size = new Size(32, 19);
+            saveAsToolStripMenuItem.Size = new Size(224, 26);
             saveAsToolStripMenuItem.Text = "Save &As";
             // 
             // toolStripSeparator1
             // 
             toolStripSeparator1.Name = "toolStripSeparator1";
-            toolStripSeparator1.Size = new Size(6, 6);
+            toolStripSeparator1.Size = new Size(221, 6);
             // 
             // printToolStripMenuItem
             // 
@@ -147,7 +186,7 @@
             printToolStripMenuItem.ImageTransparentColor = Color.Magenta;
             printToolStripMenuItem.Name = "printToolStripMenuItem";
             printToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.P;
-            printToolStripMenuItem.Size = new Size(32, 19);
+            printToolStripMenuItem.Size = new Size(224, 26);
             printToolStripMenuItem.Text = "&Print";
             // 
             // printPreviewToolStripMenuItem
@@ -155,18 +194,18 @@
             printPreviewToolStripMenuItem.Image = (Image)resources.GetObject("printPreviewToolStripMenuItem.Image");
             printPreviewToolStripMenuItem.ImageTransparentColor = Color.Magenta;
             printPreviewToolStripMenuItem.Name = "printPreviewToolStripMenuItem";
-            printPreviewToolStripMenuItem.Size = new Size(32, 19);
+            printPreviewToolStripMenuItem.Size = new Size(224, 26);
             printPreviewToolStripMenuItem.Text = "Print Pre&view";
             // 
             // toolStripSeparator2
             // 
             toolStripSeparator2.Name = "toolStripSeparator2";
-            toolStripSeparator2.Size = new Size(6, 6);
+            toolStripSeparator2.Size = new Size(221, 6);
             // 
             // exitToolStripMenuItem
             // 
             exitToolStripMenuItem.Name = "exitToolStripMenuItem";
-            exitToolStripMenuItem.Size = new Size(32, 19);
+            exitToolStripMenuItem.Size = new Size(224, 26);
             exitToolStripMenuItem.Text = "E&xit";
             // 
             // editToolStripMenuItem
@@ -180,20 +219,20 @@
             // 
             undoToolStripMenuItem.Name = "undoToolStripMenuItem";
             undoToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.Z;
-            undoToolStripMenuItem.Size = new Size(32, 19);
+            undoToolStripMenuItem.Size = new Size(179, 26);
             undoToolStripMenuItem.Text = "&Undo";
             // 
             // redoToolStripMenuItem
             // 
             redoToolStripMenuItem.Name = "redoToolStripMenuItem";
             redoToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.Y;
-            redoToolStripMenuItem.Size = new Size(32, 19);
+            redoToolStripMenuItem.Size = new Size(179, 26);
             redoToolStripMenuItem.Text = "&Redo";
             // 
             // toolStripSeparator3
             // 
             toolStripSeparator3.Name = "toolStripSeparator3";
-            toolStripSeparator3.Size = new Size(6, 6);
+            toolStripSeparator3.Size = new Size(176, 6);
             // 
             // cutToolStripMenuItem
             // 
@@ -201,7 +240,7 @@
             cutToolStripMenuItem.ImageTransparentColor = Color.Magenta;
             cutToolStripMenuItem.Name = "cutToolStripMenuItem";
             cutToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.X;
-            cutToolStripMenuItem.Size = new Size(32, 19);
+            cutToolStripMenuItem.Size = new Size(179, 26);
             cutToolStripMenuItem.Text = "Cu&t";
             // 
             // copyToolStripMenuItem
@@ -210,7 +249,7 @@
             copyToolStripMenuItem.ImageTransparentColor = Color.Magenta;
             copyToolStripMenuItem.Name = "copyToolStripMenuItem";
             copyToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.C;
-            copyToolStripMenuItem.Size = new Size(32, 19);
+            copyToolStripMenuItem.Size = new Size(179, 26);
             copyToolStripMenuItem.Text = "&Copy";
             // 
             // pasteToolStripMenuItem
@@ -219,18 +258,18 @@
             pasteToolStripMenuItem.ImageTransparentColor = Color.Magenta;
             pasteToolStripMenuItem.Name = "pasteToolStripMenuItem";
             pasteToolStripMenuItem.ShortcutKeys = Keys.Control | Keys.V;
-            pasteToolStripMenuItem.Size = new Size(32, 19);
+            pasteToolStripMenuItem.Size = new Size(179, 26);
             pasteToolStripMenuItem.Text = "&Paste";
             // 
             // toolStripSeparator4
             // 
             toolStripSeparator4.Name = "toolStripSeparator4";
-            toolStripSeparator4.Size = new Size(6, 6);
+            toolStripSeparator4.Size = new Size(176, 6);
             // 
             // selectAllToolStripMenuItem
             // 
             selectAllToolStripMenuItem.Name = "selectAllToolStripMenuItem";
-            selectAllToolStripMenuItem.Size = new Size(32, 19);
+            selectAllToolStripMenuItem.Size = new Size(179, 26);
             selectAllToolStripMenuItem.Text = "Select &All";
             // 
             // toolsToolStripMenuItem
@@ -243,13 +282,13 @@
             // customizeToolStripMenuItem
             // 
             customizeToolStripMenuItem.Name = "customizeToolStripMenuItem";
-            customizeToolStripMenuItem.Size = new Size(32, 19);
+            customizeToolStripMenuItem.Size = new Size(161, 26);
             customizeToolStripMenuItem.Text = "&Customize";
             // 
             // optionsToolStripMenuItem
             // 
             optionsToolStripMenuItem.Name = "optionsToolStripMenuItem";
-            optionsToolStripMenuItem.Size = new Size(32, 19);
+            optionsToolStripMenuItem.Size = new Size(161, 26);
             optionsToolStripMenuItem.Text = "&Options";
             // 
             // helpToolStripMenuItem
@@ -262,30 +301,30 @@
             // contentsToolStripMenuItem
             // 
             contentsToolStripMenuItem.Name = "contentsToolStripMenuItem";
-            contentsToolStripMenuItem.Size = new Size(32, 19);
+            contentsToolStripMenuItem.Size = new Size(150, 26);
             contentsToolStripMenuItem.Text = "&Contents";
             // 
             // indexToolStripMenuItem
             // 
             indexToolStripMenuItem.Name = "indexToolStripMenuItem";
-            indexToolStripMenuItem.Size = new Size(32, 19);
+            indexToolStripMenuItem.Size = new Size(150, 26);
             indexToolStripMenuItem.Text = "&Index";
             // 
             // searchToolStripMenuItem
             // 
             searchToolStripMenuItem.Name = "searchToolStripMenuItem";
-            searchToolStripMenuItem.Size = new Size(32, 19);
+            searchToolStripMenuItem.Size = new Size(150, 26);
             searchToolStripMenuItem.Text = "&Search";
             // 
             // toolStripSeparator5
             // 
             toolStripSeparator5.Name = "toolStripSeparator5";
-            toolStripSeparator5.Size = new Size(6, 6);
+            toolStripSeparator5.Size = new Size(147, 6);
             // 
             // aboutToolStripMenuItem
             // 
             aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            aboutToolStripMenuItem.Size = new Size(32, 19);
+            aboutToolStripMenuItem.Size = new Size(150, 26);
             aboutToolStripMenuItem.Text = "&About...";
             // 
             // groupBox1
@@ -317,33 +356,33 @@
             groupBox3.TabStop = false;
             groupBox3.Text = "groupBox3";
             // 
-            // groupBox4
+            // groupBoxBlockBin
             // 
-            groupBox4.Controls.Add(flowLayoutPanel1);
-            groupBox4.Location = new Point(194, 302);
-            groupBox4.Name = "groupBox4";
-            groupBox4.Size = new Size(606, 153);
-            groupBox4.TabIndex = 4;
-            groupBox4.TabStop = false;
-            groupBox4.Text = "BlockBin";
+            groupBoxBlockBin.Controls.Add(flowLayoutPanel1);
+            groupBoxBlockBin.Location = new Point(194, 302);
+            groupBoxBlockBin.Name = "groupBoxBlockBin";
+            groupBoxBlockBin.Size = new Size(606, 153);
+            groupBoxBlockBin.TabIndex = 4;
+            groupBoxBlockBin.TabStop = false;
+            groupBoxBlockBin.Text = "BlockBin";
             // 
-            // groupBox5
+            // groupBoxWorkSpace
             // 
-            groupBox5.Location = new Point(146, 31);
-            groupBox5.Name = "groupBox5";
-            groupBox5.Size = new Size(648, 276);
-            groupBox5.TabIndex = 0;
-            groupBox5.TabStop = false;
-            groupBox5.Text = "WorkSpace";
-            groupBox5.Enter += groupBox5_Enter;
+            groupBoxWorkSpace.Location = new Point(146, 31);
+            groupBoxWorkSpace.Name = "groupBoxWorkSpace";
+            groupBoxWorkSpace.Size = new Size(648, 276);
+            groupBoxWorkSpace.TabIndex = 0;
+            groupBoxWorkSpace.TabStop = false;
+            groupBoxWorkSpace.Text = "WorkSpace";
+            groupBoxWorkSpace.Enter += groupBox5_Enter;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(8F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(800, 450);
-            Controls.Add(groupBox5);
-            Controls.Add(groupBox4);
+            Controls.Add(groupBoxWorkSpace);
+            Controls.Add(groupBoxBlockBin);
             Controls.Add(groupBox2);
             Controls.Add(groupBox1);
             Controls.Add(menuStrip1);
@@ -351,10 +390,11 @@
             Name = "Form1";
             Text = "Form1";
             Load += Form1_Load;
+            flowLayoutPanel1.ResumeLayout(false);
             menuStrip1.ResumeLayout(false);
             menuStrip1.PerformLayout();
             groupBox2.ResumeLayout(false);
-            groupBox4.ResumeLayout(false);
+            groupBoxBlockBin.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -395,7 +435,10 @@
         private GroupBox groupBox1;
         private GroupBox groupBox2;
         private GroupBox groupBox3;
-        private GroupBox groupBox4;
-        private GroupBox groupBox5;
+        private GroupBox groupBoxBlockBin;
+        private GroupBox groupBoxWorkSpace;
+        private Panel Block1;
+        private Panel panel1;
+        private Panel panel2;
     }
 }
