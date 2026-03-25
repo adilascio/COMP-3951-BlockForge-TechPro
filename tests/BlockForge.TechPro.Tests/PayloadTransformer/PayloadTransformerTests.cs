@@ -1,6 +1,6 @@
 using COMP_3951_BlockForge_TechPro;
 
-namespace BlockForge.TechPro.Tests;
+namespace BlockForge.TechPro.PayloadTransformerTests;
 
 [TestClass]
 public class PayloadTransformerTests
@@ -8,8 +8,8 @@ public class PayloadTransformerTests
     [TestMethod]
     public void Payload_RoundTrip()
     {
-        string test = "xyz 123 abc :/\\ !@#$%^";
-        string expected = "abc 123 def :/\\ !@#$%^";
+        string test = "xyz 123 abc :/\\ !@#$%^ ABC XYZ";
+        string expected = "abc 123 def :/\\ !@#$%^ DEF ABC";
 
         var transformer = new PayloadTransformer(3);
 
