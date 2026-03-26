@@ -3,6 +3,12 @@ using COMP_3951_BlockForge_TechPro;
 
 namespace BlockForge.TechPro.Tests.VariableBlocks;
 
+/// <summary>
+/// BlockForge VariableBlockTests
+/// Author: Andre Di Lascio
+/// Date: Mar 24 2026
+/// Source: Written with the help of AI.
+/// </summary>
 [TestClass]
 public sealed class VariableBlockTests
 {

@@ -2,7 +2,14 @@ namespace COMP_3951_BlockForge_TechPro
 {
     public partial class Form1 : Form
     {
+        /// <summary>
+        /// Defines the width of one workspace grid cell in pixels.
+        /// </summary>
         private const int GridCellWidth = 40;
+
+        /// <summary>
+        /// Defines the height of one workspace grid cell in pixels.
+        /// </summary>
         private const int GridCellHeight = 40;
         private const int TopPanelMinSize = 80;
         private const int BottomPanelMinSize = 120;
@@ -11,10 +18,24 @@ namespace COMP_3951_BlockForge_TechPro
         private const int DeleteZoneSize = 28;
         private const int DeleteZoneMargin = 8;
 
+        /// <summary>
+        /// Calculates snapped block positions for the workspace grid.
+        /// </summary>
         private readonly GridSnapService _gridSnapService;
+
+        /// <summary>
+        /// Stores the backing <see cref="CodeBlock"/> for each workspace panel.
+        /// </summary>
         private readonly Dictionary<Panel, CodeBlock> _workspaceBlocks = new();
+
+        /// <summary>
+        /// Stores the console messages shown in the workspace console window.
+        /// </summary>
         private readonly WorkspaceConsole _workspaceConsole = new();
 
+        /// <summary>
+        /// Displays console messages in the form UI.
+        /// </summary>
         private ListBox? _consoleListBox;
         private FlowLayoutPanel? _blockBinRow;
         private ToolStrip? _variableToolStrip;
@@ -37,7 +58,7 @@ namespace COMP_3951_BlockForge_TechPro
         }
 
         /// <summary>
-        /// Uses the current workspace client size so future snap calls always respect the live workspace area.
+        /// Gets the current workspace client size so snap calculations always use the visible workspace bounds.
         /// </summary>
         private Size WorkspaceBounds => groupBoxWorkSpace.ClientSize;
 
@@ -268,6 +289,9 @@ namespace COMP_3951_BlockForge_TechPro
             return new Region(path);
         }
 
+        /// <summary>
+        /// Creates the console window UI and binds it to the in-memory workspace console.
+        /// </summary>
         private void SetupConsoleWindow()
         {
             groupBox3.Visible = false;
@@ -287,6 +311,9 @@ namespace COMP_3951_BlockForge_TechPro
             RefreshConsoleDisplay();
         }
 
+        /// <summary>
+        /// Refreshes the visible console list so it matches the stored console messages.
+        /// </summary>
         private void RefreshConsoleDisplay()
         {
             if (_consoleListBox == null)
@@ -302,6 +329,11 @@ namespace COMP_3951_BlockForge_TechPro
             }
         }
 
+        /// <summary>
+        /// Appends a message to the workspace console and refreshes the visible console window.
+        /// </summary>
+        /// <param name="severity">The severity level of the message.</param>
+        /// <param name="text">The text displayed in the console window.</param>
         private void AppendConsoleMessage(ConsoleMessageSeverity severity, string text)
         {
             _workspaceConsole.Append(new ConsoleMessage(severity, text));
@@ -560,6 +592,11 @@ namespace COMP_3951_BlockForge_TechPro
             return Color.FromArgb(r, g, b);
         }
 
+        /// <summary>
+        /// Creates and stores the backing <see cref="CodeBlock"/> for a newly dropped workspace block.
+        /// </summary>
+        /// <param name="blockPanel">The workspace panel representing the block.</param>
+        /// <param name="snappedPlacement">The snapped placement assigned to the block.</param>
         private void RegisterWorkspaceBlock(Panel blockPanel, SnappedPlacement snappedPlacement)
         {
             (CodeBlockType blockType, string blockName, VariableBlockType? variableType) = ResolveBlockMetadata(blockPanel.Tag);
@@ -705,6 +742,11 @@ namespace COMP_3951_BlockForge_TechPro
             AppendConsoleMessage(ConsoleMessageSeverity.Message, $"Clicked block '{blockName}' type: {typeText}");
         }
 
+        /// <summary>
+        /// Updates the stored <see cref="CodeBlock"/> position after a valid block move.
+        /// </summary>
+        /// <param name="blockPanel">The workspace panel representing the block.</param>
+        /// <param name="snappedPlacement">The snapped placement assigned to the block.</param>
         private void UpdateStoredBlockPosition(Panel blockPanel, SnappedPlacement snappedPlacement)
         {
             if (!_workspaceBlocks.TryGetValue(blockPanel, out CodeBlock? codeBlock))
@@ -716,6 +758,10 @@ namespace COMP_3951_BlockForge_TechPro
             codeBlock.UpdateGridPosition(snappedPlacement.GridPosition.Column, snappedPlacement.GridPosition.Row);
         }
 
+        /// <summary>
+        /// Restores a workspace block to its last stored valid position.
+        /// </summary>
+        /// <param name="blockPanel">The workspace panel to restore.</param>
         private void RestoreStoredBlockPosition(Panel blockPanel)
         {
             if (!_workspaceBlocks.TryGetValue(blockPanel, out CodeBlock? codeBlock))
@@ -726,6 +772,12 @@ namespace COMP_3951_BlockForge_TechPro
             blockPanel.Location = new Point((int)codeBlock.PosX, (int)codeBlock.PosY);
         }
 
+        /// <summary>
+        /// Determines whether a grid cell is already occupied by another workspace block.
+        /// </summary>
+        /// <param name="gridPosition">The grid position to check.</param>
+        /// <param name="movingBlock">The block currently being moved, if any.</param>
+        /// <returns><see langword="true"/> if the grid cell is occupied; otherwise, <see langword="false"/>.</returns>
         private bool IsGridCellOccupied(GridPosition gridPosition, Panel? movingBlock = null)
         {
             foreach (KeyValuePair<Panel, CodeBlock> workspaceBlock in _workspaceBlocks)
