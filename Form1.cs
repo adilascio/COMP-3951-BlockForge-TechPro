@@ -10,6 +10,8 @@ namespace COMP_3951_BlockForge_TechPro
         private readonly WorkspaceConsole _workspaceConsole = new();
 
         private ListBox? _consoleListBox;
+        private FlowLayoutPanel? _blockBinRow;
+        private ToolStrip? _variableToolStrip;
 
         public Form1()
         {
@@ -17,6 +19,7 @@ namespace COMP_3951_BlockForge_TechPro
             _gridSnapService = new GridSnapService(GridCellWidth, GridCellHeight);
             SetupDragDrop();
             SetupConsoleWindow();
+            SetupVariableToolbar();
             CreateBlockTemplates();
         }
 
@@ -117,10 +120,11 @@ namespace COMP_3951_BlockForge_TechPro
 
             // Optional: ensure it stays above anything else added later
             topRow.BringToFront();
+            _blockBinRow = topRow;
         }
 
         // Creates a template block panel with MouseDown -> DoDragDrop
-        private Panel MakeTemplateBlock(string text, Color color)
+        private Panel MakeTemplateBlock(string text, Color color, object? tagValue = null)
         {
             var p = new Panel
             {
@@ -128,7 +132,7 @@ namespace COMP_3951_BlockForge_TechPro
                 BackColor = color,
                 BorderStyle = BorderStyle.FixedSingle,
                 Cursor = Cursors.Hand,
-                Tag = text // store block "type/name" (handy later)
+                Tag = tagValue ?? text
             };
 
             var lbl = new Label
@@ -199,8 +203,10 @@ namespace COMP_3951_BlockForge_TechPro
         private Panel CloneAsWorkspaceBlock(Panel template)
         {
             // Pull text/type from Tag, and color from BackColor
-            string text = template.Tag?.ToString() ?? "Block";
+            object tagValue = template.Tag ?? "Block";
+            string text = GetBlockDisplayText(tagValue);
             Color color = template.BackColor;
+            object workspaceTag = tagValue is VariableBlock variableBlock ? CloneVariableBlock(variableBlock) : text;
 
             var p = new Panel
             {
@@ -208,7 +214,7 @@ namespace COMP_3951_BlockForge_TechPro
                 BackColor = color,
                 BorderStyle = BorderStyle.FixedSingle,
                 Cursor = Cursors.SizeAll,
-                Tag = text
+                Tag = workspaceTag
             };
 
             var lbl = new Label
@@ -281,7 +287,7 @@ namespace COMP_3951_BlockForge_TechPro
 
         private void RegisterWorkspaceBlock(Panel blockPanel, SnappedPlacement snappedPlacement)
         {
-            string blockName = blockPanel.Tag?.ToString() ?? "Block";
+            string blockName = GetBlockDisplayText(blockPanel.Tag);
             string uid = $"{blockName}-{Guid.NewGuid():N}";
             var codeBlock = new CodeBlock(
                 snappedPlacement.Location.X,
@@ -291,6 +297,76 @@ namespace COMP_3951_BlockForge_TechPro
                 snappedPlacement.GridPosition.Row);
 
             _workspaceBlocks[blockPanel] = codeBlock;
+        }
+
+        private void SetupVariableToolbar()
+        {
+            _variableToolStrip = new ToolStrip
+            {
+                GripStyle = ToolStripGripStyle.Hidden,
+                Dock = DockStyle.Top
+            };
+
+            var addVariableButton = new ToolStripButton("Add Variable");
+            addVariableButton.Click += AddVariableButton_Click;
+            _variableToolStrip.Items.Add(addVariableButton);
+
+            groupBoxBlockBin.Controls.Add(_variableToolStrip);
+            _variableToolStrip.BringToFront();
+        }
+
+        private void AddVariableButton_Click(object? sender, EventArgs e)
+        {
+            using var dialog = new VariableDefinitionDialog();
+            if (dialog.ShowDialog(this) != DialogResult.OK || dialog.Result is null)
+            {
+                return;
+            }
+
+            AddVariableTemplate(dialog.Result);
+            AppendConsoleMessage(ConsoleMessageSeverity.Message, $"Added variable block: {dialog.Result.VariableName} ({dialog.Result.VariableType})");
+        }
+
+        private void AddVariableTemplate(VariableBlock variable)
+        {
+            if (_blockBinRow == null)
+            {
+                return;
+            }
+
+            Color variableColor = variable.VariableType switch
+            {
+                VariableBlockType.String => Color.LightSkyBlue,
+                VariableBlockType.Int => Color.LightGoldenrodYellow,
+                VariableBlockType.Bool => Color.LightCoral,
+                _ => Color.LightGray
+            };
+
+            var variableTemplate = MakeTemplateBlock(GetBlockDisplayText(variable), variableColor, variable);
+            variableTemplate.Size = new Size(130, 60);
+            variableTemplate.Margin = new Padding(0, 0, 8, 0);
+            _blockBinRow.Controls.Add(variableTemplate);
+        }
+
+        private static VariableBlock CloneVariableBlock(VariableBlock variableBlock)
+        {
+            return variableBlock.VariableType switch
+            {
+                VariableBlockType.String => VariableBlock.CreateString(variableBlock.VariableName, variableBlock.StringValue ?? string.Empty),
+                VariableBlockType.Int => VariableBlock.CreateInt(variableBlock.VariableName, variableBlock.IntValue ?? 0),
+                VariableBlockType.Bool => VariableBlock.CreateBool(variableBlock.VariableName, variableBlock.BoolValue ?? false),
+                _ => throw new InvalidOperationException("Unsupported variable type.")
+            };
+        }
+
+        private static string GetBlockDisplayText(object? tagValue)
+        {
+            if (tagValue is VariableBlock variableBlock)
+            {
+                return $"{variableBlock.VariableName} : {variableBlock.VariableType}";
+            }
+
+            return tagValue?.ToString() ?? "Block";
         }
 
         private void UpdateStoredBlockPosition(Panel blockPanel, SnappedPlacement snappedPlacement)
