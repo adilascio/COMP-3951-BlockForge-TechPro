@@ -4,6 +4,10 @@ namespace COMP_3951_BlockForge_TechPro
     {
         private const int GridCellWidth = 40;
         private const int GridCellHeight = 40;
+        private const int TopPanelMinSize = 80;
+        private const int BottomPanelMinSize = 120;
+        private const int LeftPanelMinSize = 120;
+        private const int RightPanelMinSize = 240;
 
         private readonly GridSnapService _gridSnapService;
         private readonly Dictionary<Panel, CodeBlock> _workspaceBlocks = new();
@@ -12,10 +16,15 @@ namespace COMP_3951_BlockForge_TechPro
         private ListBox? _consoleListBox;
         private FlowLayoutPanel? _blockBinRow;
         private ToolStrip? _variableToolStrip;
+        private SplitContainer? _horizontalSplit;
+        private SplitContainer? _topVerticalSplit;
+        private SplitContainer? _bottomVerticalSplit;
+        private bool _syncingVerticalSplit;
 
         public Form1()
         {
             InitializeComponent();
+            SetupResizableLayout();
             _gridSnapService = new GridSnapService(GridCellWidth, GridCellHeight);
             SetupDragDrop();
             SetupConsoleWindow();
@@ -27,6 +36,160 @@ namespace COMP_3951_BlockForge_TechPro
         /// Uses the current workspace client size so future snap calls always respect the live workspace area.
         /// </summary>
         private Size WorkspaceBounds => groupBoxWorkSpace.ClientSize;
+
+        private void SetupResizableLayout()
+        {
+            _horizontalSplit = new SplitContainer
+            {
+                Dock = DockStyle.None,
+                Orientation = Orientation.Horizontal,
+                SplitterWidth = 6,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+            };
+
+            _topVerticalSplit = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Vertical,
+                SplitterWidth = 6
+            };
+
+            _bottomVerticalSplit = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Vertical,
+                SplitterWidth = 6
+            };
+
+            _topVerticalSplit.SplitterMoved += TopVerticalSplit_SplitterMoved;
+            _bottomVerticalSplit.SplitterMoved += BottomVerticalSplit_SplitterMoved;
+
+            groupBox1.Dock = DockStyle.Fill;
+            groupBoxWorkSpace.Dock = DockStyle.Fill;
+            groupBox2.Dock = DockStyle.Fill;
+            groupBoxBlockBin.Dock = DockStyle.Fill;
+
+            _topVerticalSplit.Panel1.Controls.Add(groupBox1);
+            _topVerticalSplit.Panel2.Controls.Add(groupBoxWorkSpace);
+            _bottomVerticalSplit.Panel1.Controls.Add(groupBox2);
+            _bottomVerticalSplit.Panel2.Controls.Add(groupBoxBlockBin);
+
+            _horizontalSplit.Panel1.Controls.Add(_topVerticalSplit);
+            _horizontalSplit.Panel2.Controls.Add(_bottomVerticalSplit);
+
+            Controls.Add(_horizontalSplit);
+            LayoutSplitContainerBelowMenu();
+            _horizontalSplit.BringToFront();
+            menuStrip1.BringToFront();
+        }
+
+        private void LayoutSplitContainerBelowMenu()
+        {
+            if (_horizontalSplit == null)
+            {
+                return;
+            }
+
+            int top = menuStrip1.Bottom;
+            _horizontalSplit.Location = new Point(0, top);
+            _horizontalSplit.Size = new Size(ClientSize.Width, Math.Max(1, ClientSize.Height - top));
+        }
+
+        private void ApplyInitialSplitLayout()
+        {
+            if (_horizontalSplit != null)
+            {
+                ApplySplitLayout(_horizontalSplit, TopPanelMinSize, BottomPanelMinSize, (int)(_horizontalSplit.ClientSize.Height * 0.68));
+            }
+
+            if (_topVerticalSplit != null)
+            {
+                ApplySplitLayout(_topVerticalSplit, LeftPanelMinSize, RightPanelMinSize, 180);
+            }
+
+            if (_bottomVerticalSplit != null)
+            {
+                ApplySplitLayout(_bottomVerticalSplit, LeftPanelMinSize, RightPanelMinSize, 180);
+            }
+        }
+
+        private static void ApplySplitLayout(SplitContainer splitContainer, int panel1Min, int panel2Min, int desiredDistance)
+        {
+            int span = splitContainer.Orientation == Orientation.Vertical
+                ? splitContainer.Width
+                : splitContainer.Height;
+
+            int available = Math.Max(0, span);
+            int safePanel1Min = Math.Clamp(panel1Min, 0, available);
+            int safePanel2Min = Math.Clamp(panel2Min, 0, Math.Max(0, available - safePanel1Min));
+
+            splitContainer.Panel1MinSize = 0;
+            splitContainer.Panel2MinSize = 0;
+
+            int minDistance = safePanel1Min;
+            int maxDistance = available - safePanel2Min;
+            if (maxDistance < minDistance)
+            {
+                return;
+            }
+
+            splitContainer.Panel1MinSize = safePanel1Min;
+            splitContainer.Panel2MinSize = safePanel2Min;
+            TrySetSplitterDistance(splitContainer, desiredDistance);
+        }
+
+        private void TopVerticalSplit_SplitterMoved(object? sender, SplitterEventArgs e)
+        {
+            SyncVerticalSplit(_topVerticalSplit, _bottomVerticalSplit);
+        }
+
+        private void BottomVerticalSplit_SplitterMoved(object? sender, SplitterEventArgs e)
+        {
+            SyncVerticalSplit(_bottomVerticalSplit, _topVerticalSplit);
+        }
+
+        private void SyncVerticalSplit(SplitContainer? source, SplitContainer? target)
+        {
+            if (_syncingVerticalSplit || source == null || target == null)
+            {
+                return;
+            }
+
+            _syncingVerticalSplit = true;
+            try
+            {
+                TrySetSplitterDistance(target, source.SplitterDistance);
+            }
+            finally
+            {
+                _syncingVerticalSplit = false;
+            }
+        }
+
+        private static void TrySetSplitterDistance(SplitContainer splitContainer, int desiredDistance)
+        {
+            int span = splitContainer.Orientation == Orientation.Vertical
+                ? splitContainer.Width
+                : splitContainer.Height;
+
+            int minDistance = splitContainer.Panel1MinSize;
+            int maxDistance = span - splitContainer.Panel2MinSize;
+            if (maxDistance < minDistance)
+            {
+                return;
+            }
+
+            int clamped = Math.Clamp(desiredDistance, minDistance, maxDistance);
+            try
+            {
+                splitContainer.SplitterDistance = clamped;
+            }
+            catch (InvalidOperationException)
+            {
+                int fallback = Math.Clamp(clamped - 1, minDistance, maxDistance);
+                splitContainer.SplitterDistance = fallback;
+            }
+        }
 
         // --- Drag/Drop wiring for the workspace ---
         private void SetupDragDrop()
@@ -452,7 +615,34 @@ namespace COMP_3951_BlockForge_TechPro
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            LayoutSplitContainerBelowMenu();
+            ApplyInitialSplitLayout();
+            SizeChanged += Form1_SizeChanged;
             AppendConsoleMessage(ConsoleMessageSeverity.Message, "Console ready.");
+        }
+
+        private void Form1_SizeChanged(object? sender, EventArgs e)
+        {
+            LayoutSplitContainerBelowMenu();
+            EnsureSplitBounds();
+        }
+
+        private void EnsureSplitBounds()
+        {
+            if (_horizontalSplit != null)
+            {
+                ApplySplitLayout(_horizontalSplit, TopPanelMinSize, BottomPanelMinSize, _horizontalSplit.SplitterDistance);
+            }
+
+            if (_topVerticalSplit != null)
+            {
+                ApplySplitLayout(_topVerticalSplit, LeftPanelMinSize, RightPanelMinSize, _topVerticalSplit.SplitterDistance);
+            }
+
+            if (_bottomVerticalSplit != null)
+            {
+                ApplySplitLayout(_bottomVerticalSplit, LeftPanelMinSize, RightPanelMinSize, _bottomVerticalSplit.SplitterDistance);
+            }
         }
 
         private void flowLayoutPanel1_Paint(object sender, PaintEventArgs e)
