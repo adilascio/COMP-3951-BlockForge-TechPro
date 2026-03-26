@@ -55,6 +55,8 @@
             toolStripSeparator4 = new ToolStripSeparator();
             selectAllToolStripMenuItem = new ToolStripMenuItem();
             toolsToolStripMenuItem = new ToolStripMenuItem();
+            viewToolStripMenuItem = new ToolStripMenuItem();
+            toggleBlockTypeLoggingToolStripMenuItem = new ToolStripMenuItem();
             customizeToolStripMenuItem = new ToolStripMenuItem();
             optionsToolStripMenuItem = new ToolStripMenuItem();
             helpToolStripMenuItem = new ToolStripMenuItem();
@@ -121,7 +123,7 @@
             // 
             menuStrip1.GripStyle = ToolStripGripStyle.Visible;
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, editToolStripMenuItem, toolsToolStripMenuItem, helpToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, editToolStripMenuItem, toolsToolStripMenuItem, viewToolStripMenuItem, helpToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.RenderMode = ToolStripRenderMode.System;
@@ -280,6 +282,22 @@
             toolsToolStripMenuItem.Size = new Size(58, 24);
             toolsToolStripMenuItem.Text = "&Tools";
             // 
+            // viewToolStripMenuItem
+            // 
+            viewToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { toggleBlockTypeLoggingToolStripMenuItem });
+            viewToolStripMenuItem.Name = "viewToolStripMenuItem";
+            viewToolStripMenuItem.Size = new Size(55, 24);
+            viewToolStripMenuItem.Text = "&View";
+            // 
+            // toggleBlockTypeLoggingToolStripMenuItem
+            // 
+            toggleBlockTypeLoggingToolStripMenuItem.Checked = false;
+            toggleBlockTypeLoggingToolStripMenuItem.CheckOnClick = true;
+            toggleBlockTypeLoggingToolStripMenuItem.CheckState = CheckState.Unchecked;
+            toggleBlockTypeLoggingToolStripMenuItem.Name = "toggleBlockTypeLoggingToolStripMenuItem";
+            toggleBlockTypeLoggingToolStripMenuItem.Size = new Size(270, 26);
+            toggleBlockTypeLoggingToolStripMenuItem.Text = "Show Block Type In Console";
+            // 
             // customizeToolStripMenuItem
             // 
             customizeToolStripMenuItem.Name = "customizeToolStripMenuItem";
@@ -430,6 +448,8 @@
         private ToolStripSeparator toolStripSeparator4;
         private ToolStripMenuItem selectAllToolStripMenuItem;
         private ToolStripMenuItem toolsToolStripMenuItem;
+        private ToolStripMenuItem viewToolStripMenuItem;
+        private ToolStripMenuItem toggleBlockTypeLoggingToolStripMenuItem;
         private ToolStripMenuItem customizeToolStripMenuItem;
         private ToolStripMenuItem optionsToolStripMenuItem;
         private ToolStripMenuItem helpToolStripMenuItem;

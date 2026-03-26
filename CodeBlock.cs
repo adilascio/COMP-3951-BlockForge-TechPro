@@ -21,6 +21,9 @@ namespace COMP_3951_BlockForge_TechPro
         public int GridColumn { get; set; }
         public int GridRow { get; set; }
         public string Uid { get; set; }
+        public CodeBlockType BlockType { get; set; }
+        public string? BlockName { get; set; }
+        public VariableBlockType? VariableType { get; set; }
 
         /// <summary>
         /// Constructor for a CodeBlock.
@@ -28,13 +31,24 @@ namespace COMP_3951_BlockForge_TechPro
         /// <param name="posX">starting X coordinate to place from.</param>
         /// <param name="posY">starting Y coordinate to place from.</param>
         /// <param name="uid">unique identifier for an instance of CodeBlock. Uniqueness will be enforced elsewhere, for now the CodeBlockValidator will log duplicates.</param>
-        public CodeBlock(double posX, double posY, String uid, int gridColumn = 0, int gridRow = 0)
+        public CodeBlock(
+            double posX,
+            double posY,
+            String uid,
+            int gridColumn = 0,
+            int gridRow = 0,
+            CodeBlockType blockType = CodeBlockType.Unknown,
+            string? blockName = null,
+            VariableBlockType? variableType = null)
         {
             this.PosX = posX;
             this.PosY = posY;
             this.Uid = uid;
             this.GridColumn = gridColumn;
             this.GridRow = gridRow;
+            this.BlockType = blockType;
+            this.BlockName = blockName;
+            this.VariableType = variableType;
         }
 
         /// <summary>
@@ -58,6 +72,13 @@ namespace COMP_3951_BlockForge_TechPro
         {
             this.GridColumn = gridColumn;
             this.GridRow = gridRow;
+        }
+
+        public void UpdateBlockMetadata(CodeBlockType blockType, string? blockName = null, VariableBlockType? variableType = null)
+        {
+            this.BlockType = blockType;
+            this.BlockName = blockName;
+            this.VariableType = variableType;
         }
     }
 }

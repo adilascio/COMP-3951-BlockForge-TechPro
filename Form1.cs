@@ -148,6 +148,8 @@ namespace COMP_3951_BlockForge_TechPro
             // clicking the label should also drag
             p.MouseDown += TemplateBlock_MouseDown;
             lbl.MouseDown += (s, e) => TemplateBlock_MouseDown(p, e);
+            p.Click += Block_Click;
+            lbl.Click += (s, e) => Block_Click(p, e);
 
             return p;
         }
@@ -236,6 +238,8 @@ namespace COMP_3951_BlockForge_TechPro
             lbl.MouseDown += (s, e) => WorkspaceBlock_MouseDown(p, e);
             lbl.MouseMove += (s, e) => WorkspaceBlock_MouseMove(p, e);
             lbl.MouseUp += (s, e) => WorkspaceBlock_MouseUp(p, e);
+            p.Click += Block_Click;
+            lbl.Click += (s, e) => Block_Click(p, e);
 
             return p;
         }
@@ -287,14 +291,17 @@ namespace COMP_3951_BlockForge_TechPro
 
         private void RegisterWorkspaceBlock(Panel blockPanel, SnappedPlacement snappedPlacement)
         {
-            string blockName = GetBlockDisplayText(blockPanel.Tag);
+            (CodeBlockType blockType, string blockName, VariableBlockType? variableType) = ResolveBlockMetadata(blockPanel.Tag);
             string uid = $"{blockName}-{Guid.NewGuid():N}";
             var codeBlock = new CodeBlock(
                 snappedPlacement.Location.X,
                 snappedPlacement.Location.Y,
                 uid,
                 snappedPlacement.GridPosition.Column,
-                snappedPlacement.GridPosition.Row);
+                snappedPlacement.GridPosition.Row,
+                blockType,
+                blockName,
+                variableType);
 
             _workspaceBlocks[blockPanel] = codeBlock;
         }
@@ -367,6 +374,47 @@ namespace COMP_3951_BlockForge_TechPro
             }
 
             return tagValue?.ToString() ?? "Block";
+        }
+
+        private static (CodeBlockType BlockType, string BlockName, VariableBlockType? VariableType) ResolveBlockMetadata(object? tagValue)
+        {
+            if (tagValue is VariableBlock variableBlock)
+            {
+                return (CodeBlockType.Variable, variableBlock.VariableName, variableBlock.VariableType);
+            }
+
+            string blockName = tagValue?.ToString() ?? "Block";
+            CodeBlockType blockType = blockName switch
+            {
+                "If" => CodeBlockType.If,
+                "While" => CodeBlockType.While,
+                "Run" => CodeBlockType.Run,
+                "Print" => CodeBlockType.Print,
+                "==" => CodeBlockType.Equals,
+                _ => CodeBlockType.Unknown
+            };
+
+            return (blockType, blockName, null);
+        }
+
+        private void Block_Click(object? sender, EventArgs e)
+        {
+            if (!toggleBlockTypeLoggingToolStripMenuItem.Checked)
+            {
+                return;
+            }
+
+            if (sender is not Panel blockPanel)
+            {
+                return;
+            }
+
+            (CodeBlockType blockType, string blockName, VariableBlockType? variableType) = ResolveBlockMetadata(blockPanel.Tag);
+            string typeText = variableType.HasValue
+                ? $"{blockType} ({variableType.Value})"
+                : blockType.ToString();
+
+            AppendConsoleMessage(ConsoleMessageSeverity.Message, $"Clicked block '{blockName}' type: {typeText}");
         }
 
         private void UpdateStoredBlockPosition(Panel blockPanel, SnappedPlacement snappedPlacement)
