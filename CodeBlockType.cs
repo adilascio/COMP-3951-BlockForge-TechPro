@@ -7,6 +7,8 @@ namespace COMP_3951_BlockForge_TechPro
         While,
         Run,
         Print,
+        Assignment,
+        Operator,
         Equals,
         Variable
     }

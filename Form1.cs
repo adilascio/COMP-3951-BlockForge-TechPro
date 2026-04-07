@@ -371,9 +371,11 @@ namespace COMP_3951_BlockForge_TechPro
             var block3 = MakeTemplateBlock("Run", Color.Green);
             var block4 = MakeTemplateBlock("Print", Color.Khaki);
             var block5 = MakeTemplateBlock("==", Color.Plum);
+            var block6 = MakeTemplateBlock("=", Color.MistyRose);
+            var block7 = MakeTemplateBlock("Operator", Color.LightSteelBlue, new OperatorBlock());
 
             // Size 
-            block1.Size = block2.Size = block3.Size = block4.Size = block5.Size = new Size(StandardBlockWidth, StandardBlockHeight);
+            block1.Size = block2.Size = block3.Size = block4.Size = block5.Size = block6.Size = block7.Size = new Size(StandardBlockWidth, StandardBlockHeight);
 
             // Small gap between blocks (FlowLayoutPanel uses each control's Margin)
             block1.Margin = new Padding(0, 0, 8, 0);
@@ -381,6 +383,8 @@ namespace COMP_3951_BlockForge_TechPro
             block3.Margin = new Padding(0, 0, 8, 0);
             block4.Margin = new Padding(0, 0, 8, 0);
             block5.Margin = new Padding(0, 0, 8, 0);
+            block6.Margin = new Padding(0, 0, 8, 0);
+            block7.Margin = new Padding(0, 0, 8, 0);
 
             // Add to the row
             topRow.Controls.Add(block1);
@@ -388,6 +392,8 @@ namespace COMP_3951_BlockForge_TechPro
             topRow.Controls.Add(block3);
             topRow.Controls.Add(block4);
             topRow.Controls.Add(block5);
+            topRow.Controls.Add(block6);
+            topRow.Controls.Add(block7);
 
             // Add the row to BlockBin
             groupBoxBlockBin.Controls.Add(topRow);
@@ -492,7 +498,12 @@ namespace COMP_3951_BlockForge_TechPro
             object tagValue = template.Tag ?? "Block";
             string text = GetBlockDisplayText(tagValue);
             Color color = template.BackColor;
-            object workspaceTag = tagValue is VariableBlock variableBlock ? CloneVariableBlock(variableBlock) : text;
+            object workspaceTag = tagValue switch
+            {
+                VariableBlock variableBlock => CloneVariableBlock(variableBlock),
+                OperatorBlock operatorBlock => CloneOperatorBlock(operatorBlock),
+                _ => text
+            };
 
             var p = new Panel
             {
@@ -503,27 +514,12 @@ namespace COMP_3951_BlockForge_TechPro
                 Tag = workspaceTag
             };
 
-            var lbl = new Label
-            {
-                Text = text,
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 10, FontStyle.Bold)
-            };
-
-            p.Controls.Add(lbl);
-
             // Make it draggable INSIDE the workspace
             p.MouseDown += WorkspaceBlock_MouseDown;
             p.MouseMove += WorkspaceBlock_MouseMove;
             p.MouseUp += WorkspaceBlock_MouseUp;
-
-            // If they click label, still drag the parent panel
-            lbl.MouseDown += (s, e) => WorkspaceBlock_MouseDown(p, e);
-            lbl.MouseMove += (s, e) => WorkspaceBlock_MouseMove(p, e);
-            lbl.MouseUp += (s, e) => WorkspaceBlock_MouseUp(p, e);
             p.Click += Block_Click;
-            lbl.Click += (s, e) => Block_Click(p, e);
+            BuildWorkspaceBlockContent(p, workspaceTag, text);
 
             return p;
         }
@@ -624,7 +620,7 @@ namespace COMP_3951_BlockForge_TechPro
                 blockType,
                 blockName,
                 variableType);
-            ApplyVariableBlockValues(codeBlock, blockPanel.Tag);
+            ApplyBlockValues(codeBlock, blockPanel.Tag);
 
             _workspaceBlocks[blockPanel] = codeBlock;
             AppendConsoleMessage(ConsoleMessageSeverity.Message, $"{blockName} block created.");
@@ -713,11 +709,69 @@ namespace COMP_3951_BlockForge_TechPro
             };
         }
 
+        private static OperatorBlock CloneOperatorBlock(OperatorBlock operatorBlock)
+        {
+            return new OperatorBlock(operatorBlock.SelectedOperator);
+        }
+
+        private void BuildWorkspaceBlockContent(Panel blockPanel, object workspaceTag, string text)
+        {
+            if (workspaceTag is OperatorBlock operatorBlock)
+            {
+                ComboBox operatorComboBox = new()
+                {
+                    Dock = DockStyle.Fill,
+                    DropDownStyle = ComboBoxStyle.DropDownList,
+                    Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                    FlatStyle = FlatStyle.Flat
+                };
+
+                operatorComboBox.Items.AddRange(OperatorBlock.SupportedOperators);
+                operatorComboBox.SelectedItem = operatorBlock.SelectedOperator;
+                if (operatorComboBox.SelectedIndex < 0)
+                {
+                    operatorComboBox.SelectedIndex = 0;
+                    operatorBlock.SelectedOperator = operatorComboBox.SelectedItem?.ToString() ?? "+";
+                }
+
+                operatorComboBox.SelectedIndexChanged += (_, _) =>
+                {
+                    operatorBlock.SelectedOperator = operatorComboBox.SelectedItem?.ToString() ?? "+";
+                    if (_workspaceBlocks.TryGetValue(blockPanel, out CodeBlock? codeBlock))
+                    {
+                        codeBlock.UpdateVariableValues(stringValue: operatorBlock.SelectedOperator);
+                    }
+                };
+
+                blockPanel.Controls.Add(operatorComboBox);
+                return;
+            }
+
+            Label label = new()
+            {
+                Text = text,
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold)
+            };
+
+            blockPanel.Controls.Add(label);
+            label.MouseDown += (s, e) => WorkspaceBlock_MouseDown(blockPanel, e);
+            label.MouseMove += (s, e) => WorkspaceBlock_MouseMove(blockPanel, e);
+            label.MouseUp += (s, e) => WorkspaceBlock_MouseUp(blockPanel, e);
+            label.Click += (s, e) => Block_Click(blockPanel, e);
+        }
+
         private static string GetBlockDisplayText(object? tagValue)
         {
             if (tagValue is VariableBlock variableBlock)
             {
                 return $"{variableBlock.VariableName} : {variableBlock.VariableType}";
+            }
+
+            if (tagValue is OperatorBlock)
+            {
+                return "Operator";
             }
 
             return tagValue?.ToString() ?? "Block";
@@ -742,6 +796,8 @@ namespace COMP_3951_BlockForge_TechPro
                 CodeBlockType.While => Color.PeachPuff,
                 CodeBlockType.Run => Color.Green,
                 CodeBlockType.Print => Color.Khaki,
+                CodeBlockType.Assignment => Color.MistyRose,
+                CodeBlockType.Operator => Color.LightSteelBlue,
                 CodeBlockType.Equals => Color.Plum,
                 _ => Color.LightGray
             };
@@ -751,7 +807,9 @@ namespace COMP_3951_BlockForge_TechPro
         {
             if (codeBlock.BlockType != CodeBlockType.Variable || !codeBlock.VariableType.HasValue)
             {
-                return codeBlock.BlockName ?? codeBlock.BlockType.ToString();
+                return codeBlock.BlockType == CodeBlockType.Operator
+                    ? new OperatorBlock(codeBlock.StringValue ?? "+")
+                    : codeBlock.BlockName ?? codeBlock.BlockType.ToString();
             }
 
             return codeBlock.VariableType.Value switch
@@ -771,12 +829,18 @@ namespace COMP_3951_BlockForge_TechPro
             }
 
             string blockName = tagValue?.ToString() ?? "Block";
+            if (tagValue is OperatorBlock)
+            {
+                return (CodeBlockType.Operator, "Operator", null);
+            }
+
             CodeBlockType blockType = blockName switch
             {
                 "If" => CodeBlockType.If,
                 "While" => CodeBlockType.While,
                 "Run" => CodeBlockType.Run,
                 "Print" => CodeBlockType.Print,
+                "=" => CodeBlockType.Assignment,
                 "==" => CodeBlockType.Equals,
                 _ => CodeBlockType.Unknown
             };
@@ -784,15 +848,21 @@ namespace COMP_3951_BlockForge_TechPro
             return (blockType, blockName, null);
         }
 
-        private static void ApplyVariableBlockValues(CodeBlock codeBlock, object? tagValue)
+        private static void ApplyBlockValues(CodeBlock codeBlock, object? tagValue)
         {
-            if (tagValue is not VariableBlock variableBlock)
+            if (tagValue is VariableBlock variableBlock)
             {
-                codeBlock.UpdateVariableValues();
+                codeBlock.UpdateVariableValues(variableBlock.StringValue, variableBlock.IntValue, variableBlock.BoolValue);
                 return;
             }
 
-            codeBlock.UpdateVariableValues(variableBlock.StringValue, variableBlock.IntValue, variableBlock.BoolValue);
+            if (tagValue is OperatorBlock operatorBlock)
+            {
+                codeBlock.UpdateVariableValues(stringValue: operatorBlock.SelectedOperator);
+                return;
+            }
+
+            codeBlock.UpdateVariableValues();
         }
 
         private void Block_Click(object? sender, EventArgs e)
@@ -1179,7 +1249,7 @@ namespace COMP_3951_BlockForge_TechPro
                     source.ParentBlockUid,
                     source.ChildBlockUid);
 
-                ApplyVariableBlockValues(snapshot, tagValue);
+                ApplyBlockValues(snapshot, tagValue);
                 blocks.Add(snapshot);
             }
 
@@ -1258,24 +1328,11 @@ namespace COMP_3951_BlockForge_TechPro
                 Tag = workspaceTag,
                 Location = new Point((int)codeBlock.PosX, (int)codeBlock.PosY)
             };
-
-            var label = new Label
-            {
-                Text = text,
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Font = new Font("Segoe UI", 10, FontStyle.Bold)
-            };
-
-            panel.Controls.Add(label);
             panel.MouseDown += WorkspaceBlock_MouseDown;
             panel.MouseMove += WorkspaceBlock_MouseMove;
             panel.MouseUp += WorkspaceBlock_MouseUp;
-            label.MouseDown += (s, e) => WorkspaceBlock_MouseDown(panel, e);
-            label.MouseMove += (s, e) => WorkspaceBlock_MouseMove(panel, e);
-            label.MouseUp += (s, e) => WorkspaceBlock_MouseUp(panel, e);
             panel.Click += Block_Click;
-            label.Click += (s, e) => Block_Click(panel, e);
+            BuildWorkspaceBlockContent(panel, workspaceTag, text);
 
             return panel;
         }
