@@ -1352,6 +1352,54 @@ namespace COMP_3951_BlockForge_TechPro
         {
             LoadWorkspaceLayout();
         }
+
+        private void generateDummyFile(Object sender, EventArgs e)
+        {
+            PayloadTransformer transformer = new PayloadTransformer(5);
+            ProjectFileManager filemanager = new ProjectFileManager(transformer);
+
+            List<CodeBlock> blocks = new List<CodeBlock>();
+            blocks.Add(new CodeBlock(150, 300, "UID-1"));
+            blocks.Add(new CodeBlock(300, 600, "UID-2"));
+            blocks.Add(new CodeBlock(450, 900, "UID-3"));
+
+            Project project = new Project("dummy_file", blocks);
+            string filepath = project.ProjectName + ".bfg";
+
+            filemanager.SaveFile(project);
+        }
+
+        private void loadDummyFile(Object sender, EventArgs e)
+        {
+            PayloadTransformer transformer = new PayloadTransformer(5);
+            ProjectFileManager filemanager = new ProjectFileManager(transformer);
+
+            string filepath = "dummy_file.bfg";
+            Project? loaded = null;
+
+            try
+            {
+                loaded = filemanager.LoadFile(filepath);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error occurred: " + ex.Message);
+            }
+            finally
+            {
+                if (loaded != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("Loaded Project: " + loaded.ProjectName + " BFG Version: " + loaded.Version);
+                    if (loaded.CodeBlocks.Count > 0)
+                    {
+                        foreach (CodeBlock block in loaded.CodeBlocks)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"{block.Uid}: {block.PosX}, {block.PosY}");
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
