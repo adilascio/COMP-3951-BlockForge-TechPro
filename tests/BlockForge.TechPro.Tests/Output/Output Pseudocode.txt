@@ -1,0 +1,7 @@
+﻿IF X <= Y
+	THEN
+		PRINT "Hello World"
+	ELSE
+		PRINT "Goodbye!"
+	END
+END
