@@ -65,6 +65,7 @@
             executeWorkspaceToolStripMenuItem = new ToolStripMenuItem();
             generateFileToolStripMenuItem = new ToolStripMenuItem();
             loadDummyFileToolStripMenuItem = new ToolStripMenuItem();
+            clearWorkspaceToolStripMenuItem = new ToolStripMenuItem();
             groupBox1 = new GroupBox();
             groupBox2 = new GroupBox();
             groupBox3 = new GroupBox();
@@ -127,7 +128,7 @@
             // 
             menuStrip1.GripStyle = ToolStripGripStyle.Visible;
             menuStrip1.ImageScalingSize = new Size(20, 20);
-            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, editToolStripMenuItem, toolsToolStripMenuItem, viewToolStripMenuItem, helpToolStripMenuItem, debugToolStripMenuItem });
+            menuStrip1.Items.AddRange(new ToolStripItem[] { fileToolStripMenuItem, editToolStripMenuItem, toolsToolStripMenuItem, viewToolStripMenuItem, helpToolStripMenuItem, debugToolStripMenuItem, clearWorkspaceToolStripMenuItem });
             menuStrip1.Location = new Point(0, 0);
             menuStrip1.Name = "menuStrip1";
             menuStrip1.RenderMode = ToolStripRenderMode.System;
@@ -350,6 +351,13 @@
             loadDummyFileToolStripMenuItem.Text = "Load Dummy File";
             loadDummyFileToolStripMenuItem.Click += loadDummyFile;
             // 
+            // clearWorkspaceToolStripMenuItem
+            // 
+            clearWorkspaceToolStripMenuItem.Name = "clearWorkspaceToolStripMenuItem";
+            clearWorkspaceToolStripMenuItem.Size = new Size(106, 20);
+            clearWorkspaceToolStripMenuItem.Text = "Clear Workspace";
+            clearWorkspaceToolStripMenuItem.Click += clearWorkspaceToolStripMenuItem_Click;
+            // 
             // groupBox1
             // 
             groupBox1.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
@@ -481,5 +489,6 @@
         private ToolStripMenuItem executeWorkspaceToolStripMenuItem;
         private ToolStripMenuItem generateFileToolStripMenuItem;
         private ToolStripMenuItem loadDummyFileToolStripMenuItem;
+        private ToolStripMenuItem clearWorkspaceToolStripMenuItem;
     }
 }

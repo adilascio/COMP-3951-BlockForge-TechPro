@@ -117,7 +117,51 @@ namespace COMP_3951_BlockForge_TechPro
                 return;
             }
 
+            if (IsStandaloneExpressionStatement(chain))
+            {
+                _ = EvaluateExpression(chain, result.VariableState);
+                return;
+            }
+
             result.Diagnostics.Add($"Unsupported statement: {_statementChainService.BuildStatementText(root, blocks)}");
+        }
+
+        private static bool IsStandaloneExpressionStatement(IReadOnlyList<CodeBlock> chain)
+        {
+            if (chain.Count < 3)
+            {
+                return false;
+            }
+
+            if (!IsOperandBlock(chain[0].BlockType))
+            {
+                return false;
+            }
+
+            for (int index = 1; index < chain.Count; index += 2)
+            {
+                if (index >= chain.Count || !IsOperatorBlock(chain[index].BlockType))
+                {
+                    return false;
+                }
+
+                if (index + 1 >= chain.Count || !IsOperandBlock(chain[index + 1].BlockType))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool IsOperandBlock(CodeBlockType blockType)
+        {
+            return blockType == CodeBlockType.Variable || blockType == CodeBlockType.Input;
+        }
+
+        private static bool IsOperatorBlock(CodeBlockType blockType)
+        {
+            return blockType == CodeBlockType.Operator || blockType == CodeBlockType.Equals;
         }
 
         private static void UpdateMatchingVariableBlocks(

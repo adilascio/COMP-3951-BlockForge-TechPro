@@ -25,6 +25,8 @@ namespace COMP_3951_BlockForge_TechPro
         private const int InputBlockInnerPadding = 4;
         private const int InputBlockMinimumTextWidth = 54;
         private const int InputBlockDragHandleWidth = 14;
+        private const int StatementLineHeight = 1;
+        private const int NestedBlockIndentWidth = 18;
 
         /// <summary>
         /// Calculates snapped block positions for the workspace grid.
@@ -36,6 +38,7 @@ namespace COMP_3951_BlockForge_TechPro
         /// </summary>
         private readonly Dictionary<Panel, CodeBlock> _workspaceBlocks = new();
         private readonly Dictionary<Panel, BlockConnectorControl> _connectorControlsByChild = new();
+        private readonly Dictionary<string, Panel> _statementUnderlineControls = new();
 
         /// <summary>
         /// Stores the console messages shown in the workspace console window.
@@ -240,6 +243,7 @@ namespace COMP_3951_BlockForge_TechPro
             groupBoxWorkSpace.AllowDrop = true;
             groupBoxWorkSpace.DragEnter += WorkSpace_DragEnter;
             groupBoxWorkSpace.DragDrop += WorkSpace_DragDrop;
+            groupBoxWorkSpace.MouseDown += WorkspaceSurface_MouseDown;
         }
 
         private void SetupDeleteDropZone()
@@ -319,9 +323,12 @@ namespace COMP_3951_BlockForge_TechPro
                 BorderStyle = BorderStyle.None,
                 BackColor = Color.WhiteSmoke,
                 Font = new Font("Consolas", 9F, FontStyle.Regular),
-                HorizontalScrollbar = true
+                HorizontalScrollbar = true,
+                DrawMode = DrawMode.OwnerDrawFixed,
+                ItemHeight = 18
             };
 
+            _consoleListBox.DrawItem += ConsoleListBox_DrawItem;
             groupBox2.Controls.Add(_consoleListBox);
             _consoleListBox.BringToFront();
 
@@ -342,7 +349,12 @@ namespace COMP_3951_BlockForge_TechPro
 
             foreach (ConsoleMessage message in _workspaceConsole.Messages)
             {
-                _consoleListBox.Items.Add($"[{message.Severity}] {message.Text}");
+                _consoleListBox.Items.Add(message);
+            }
+
+            if (_consoleListBox.Items.Count > 0)
+            {
+                _consoleListBox.TopIndex = _consoleListBox.Items.Count - 1;
             }
         }
 
@@ -355,6 +367,33 @@ namespace COMP_3951_BlockForge_TechPro
         {
             _workspaceConsole.Append(new ConsoleMessage(severity, text));
             RefreshConsoleDisplay();
+        }
+
+        private void ConsoleListBox_DrawItem(object? sender, DrawItemEventArgs e)
+        {
+            e.DrawBackground();
+            if (_consoleListBox == null || e.Index < 0 || e.Index >= _consoleListBox.Items.Count)
+            {
+                return;
+            }
+
+            ConsoleMessage message = (ConsoleMessage)_consoleListBox.Items[e.Index]!;
+            Color textColor = message.Severity switch
+            {
+                ConsoleMessageSeverity.Error => Color.Firebrick,
+                ConsoleMessageSeverity.Warning => Color.Goldenrod,
+                _ => e.ForeColor
+            };
+
+            TextRenderer.DrawText(
+                e.Graphics,
+                $"[{message.Severity}] {message.Text}",
+                e.Font,
+                e.Bounds,
+                textColor,
+                TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+
+            e.DrawFocusRectangle();
         }
 
         // Testing Templates
@@ -635,7 +674,6 @@ namespace COMP_3951_BlockForge_TechPro
             ApplyBlockValues(codeBlock, blockPanel.Tag);
 
             _workspaceBlocks[blockPanel] = codeBlock;
-            AppendConsoleMessage(ConsoleMessageSeverity.Message, $"{blockName} block created.");
         }
 
         private bool TryDeleteBlockOnDrop(Panel blockPanel)
@@ -1102,8 +1140,7 @@ namespace COMP_3951_BlockForge_TechPro
             }
 
             blockPanel.Location = new Point((int)codeBlock.PosX, (int)codeBlock.PosY);
-            AlignConnectedChildren(blockPanel);
-            RepositionConnectorForChild(blockPanel);
+            RefreshWorkspaceBlockVisuals();
         }
 
         /// <summary>
@@ -1205,6 +1242,11 @@ namespace COMP_3951_BlockForge_TechPro
                     parentBlock.GridColumn == childBlock.GridColumn &&
                     parentBlock.GridRow + 1 == childBlock.GridRow;
 
+                if (isDirectlyBelowParent && !string.IsNullOrWhiteSpace(parentBlock.PreviousStatementBlockUid))
+                {
+                    continue;
+                }
+
                 if (isDirectlyBelowParent && _blockConnectorService.CanConnect(parentBlock, childBlock))
                 {
                     return workspaceBlock.Key;
@@ -1223,6 +1265,7 @@ namespace COMP_3951_BlockForge_TechPro
 
             Panel? existingParentPanel = GetParentPanel(childPanel);
             Panel? attachableParentPanel = FindAttachableParentPanel(childPanel);
+            Panel? invalidStatementParentPanel = FindNonRootStatementParentPanel(childPanel);
 
             if (existingParentPanel != null && existingParentPanel != attachableParentPanel)
             {
@@ -1231,6 +1274,11 @@ namespace COMP_3951_BlockForge_TechPro
 
             if (attachableParentPanel == null)
             {
+                if (invalidStatementParentPanel != null)
+                {
+                    AppendConsoleMessage(ConsoleMessageSeverity.Warning, "Vertical connections must attach to the first block in a horizontal statement.");
+                }
+
                 RemoveConnectorVisualForChild(childPanel);
                 return;
             }
@@ -1243,13 +1291,38 @@ namespace COMP_3951_BlockForge_TechPro
             if (childBlock.ParentBlockUid != parentBlock.Uid)
             {
                 _blockConnectorService.Connect(parentBlock, childBlock);
-                childPanel.Location = new Point((int)childBlock.PosX, (int)childBlock.PosY);
-                AppendConsoleMessage(ConsoleMessageSeverity.Message, $"Connected {childBlock.BlockName ?? childBlock.Uid} to {parentBlock.BlockName ?? parentBlock.Uid}.");
             }
 
             EnsureConnectorVisual(attachableParentPanel, childPanel);
-            RepositionConnectorForChild(childPanel);
-            AlignConnectedChildren(childPanel);
+            RefreshWorkspaceBlockVisuals();
+        }
+
+        private Panel? FindNonRootStatementParentPanel(Panel childPanel)
+        {
+            if (!_workspaceBlocks.TryGetValue(childPanel, out CodeBlock? childBlock))
+            {
+                return null;
+            }
+
+            foreach (KeyValuePair<Panel, CodeBlock> workspaceBlock in _workspaceBlocks)
+            {
+                if (workspaceBlock.Key == childPanel)
+                {
+                    continue;
+                }
+
+                CodeBlock parentBlock = workspaceBlock.Value;
+                bool isDirectlyBelowParent =
+                    parentBlock.GridColumn == childBlock.GridColumn &&
+                    parentBlock.GridRow + 1 == childBlock.GridRow;
+
+                if (isDirectlyBelowParent && !string.IsNullOrWhiteSpace(parentBlock.PreviousStatementBlockUid))
+                {
+                    return workspaceBlock.Key;
+                }
+            }
+
+            return null;
         }
 
         private void DisconnectBlockFromConnector(CodeBlock block)
@@ -1294,6 +1367,25 @@ namespace COMP_3951_BlockForge_TechPro
                     _blockConnectorService.ConnectStatement(leftBlock, rightBlock);
                 }
             }
+
+            foreach (KeyValuePair<Panel, CodeBlock> workspaceBlock in _workspaceBlocks
+                         .OrderBy(entry => entry.Value.GridRow)
+                         .ThenBy(entry => entry.Value.GridColumn))
+            {
+                workspaceBlock.Key.Location = GetVisualBlockLocation(workspaceBlock.Value, blocksByUid);
+            }
+
+            foreach (Panel childPanel in _connectorControlsByChild.Keys.ToList())
+            {
+                RepositionConnectorForChild(childPanel);
+            }
+
+            RefreshStatementUnderlineVisuals();
+        }
+
+        private void WorkspaceSurface_MouseDown(object? sender, MouseEventArgs e)
+        {
+            ActiveControl = null;
         }
 
         private void EnsureConnectorVisual(Panel parentPanel, Panel childPanel)
@@ -1361,18 +1453,121 @@ namespace COMP_3951_BlockForge_TechPro
 
             Dictionary<string, CodeBlock> blocksByUid = _workspaceBlocks.Values.ToDictionary(workspaceBlock => workspaceBlock.Uid, workspaceBlock => workspaceBlock);
             _blockConnectorService.MoveChain(parentBlock, blocksByUid, parentBlock.GridColumn, parentBlock.GridRow);
+            RefreshWorkspaceBlockVisuals();
+        }
 
-            CodeBlock currentBlock = parentBlock;
-            Panel? currentPanel = parentPanel;
-            while (currentPanel != null && currentBlock != null)
+        private void RefreshWorkspaceBlockVisuals()
+        {
+            Dictionary<string, CodeBlock> blocksByUid = _workspaceBlocks.Values.ToDictionary(block => block.Uid, block => block);
+
+            foreach (KeyValuePair<Panel, CodeBlock> workspaceBlock in _workspaceBlocks
+                         .OrderBy(entry => entry.Value.GridRow)
+                         .ThenBy(entry => entry.Value.GridColumn))
             {
-                currentPanel.Location = new Point((int)currentBlock.PosX, (int)currentBlock.PosY);
-                RepositionConnectorForChild(currentPanel);
+                workspaceBlock.Key.Location = GetVisualBlockLocation(workspaceBlock.Value, blocksByUid);
+            }
 
-                currentPanel = GetChildPanel(currentPanel);
-                currentBlock = currentPanel != null && _workspaceBlocks.TryGetValue(currentPanel, out CodeBlock? nextBlock)
-                    ? nextBlock
-                    : null;
+            foreach (Panel childPanel in _connectorControlsByChild.Keys.ToList())
+            {
+                RepositionConnectorForChild(childPanel);
+            }
+
+            RefreshStatementUnderlineVisuals();
+            _deleteDropZone?.BringToFront();
+        }
+
+        private Point GetVisualBlockLocation(CodeBlock block, IDictionary<string, CodeBlock> blocksByUid)
+        {
+            CodeBlock indentSource = GetStatementRootBlock(block, blocksByUid);
+            int indentLevel = 0;
+            string? parentUid = indentSource.ParentBlockUid;
+
+            while (!string.IsNullOrWhiteSpace(parentUid) && blocksByUid.TryGetValue(parentUid, out CodeBlock? parentBlock))
+            {
+                if (parentBlock.BlockType == CodeBlockType.If || parentBlock.BlockType == CodeBlockType.While)
+                {
+                    indentLevel++;
+                }
+
+                parentUid = parentBlock.ParentBlockUid;
+            }
+
+            return new Point((int)block.PosX + (indentLevel * NestedBlockIndentWidth), (int)block.PosY);
+        }
+
+        private static CodeBlock GetStatementRootBlock(CodeBlock block, IDictionary<string, CodeBlock> blocksByUid)
+        {
+            CodeBlock current = block;
+
+            while (!string.IsNullOrWhiteSpace(current.PreviousStatementBlockUid) &&
+                   blocksByUid.TryGetValue(current.PreviousStatementBlockUid, out CodeBlock? previous))
+            {
+                current = previous;
+            }
+
+            return current;
+        }
+
+        private void RefreshStatementUnderlineVisuals()
+        {
+            foreach (Panel underline in _statementUnderlineControls.Values)
+            {
+                groupBoxWorkSpace.Controls.Remove(underline);
+                underline.Dispose();
+            }
+
+            _statementUnderlineControls.Clear();
+
+            Dictionary<string, CodeBlock> blocksByUid = _workspaceBlocks.Values.ToDictionary(block => block.Uid, block => block);
+            foreach (CodeBlock block in blocksByUid.Values
+                         .Where(block => string.IsNullOrWhiteSpace(block.PreviousStatementBlockUid) &&
+                                         !string.IsNullOrWhiteSpace(block.NextStatementBlockUid))
+                         .OrderBy(block => block.GridRow)
+                         .ThenBy(block => block.GridColumn))
+            {
+                List<CodeBlock> chain = new StatementChainService().GetStatementChain(block, blocksByUid);
+                List<Panel> panels = chain
+                    .Select(statementBlock => GetPanelByUid(statementBlock.Uid))
+                    .Where(panel => panel != null)
+                    .Cast<Panel>()
+                    .ToList();
+
+                if (panels.Count < 2)
+                {
+                    continue;
+                }
+
+                int left = panels.Min(panel => panel.Left) + 8;
+                int right = panels.Max(panel => panel.Right) - 8;
+                int y = panels.Max(panel => panel.Bottom) + 2;
+                if (right <= left)
+                {
+                    continue;
+                }
+
+                Panel underline = new()
+                {
+                    Height = StatementLineHeight,
+                    Width = right - left,
+                    Left = left,
+                    Top = y,
+                    BackColor = Color.DarkOrange,
+                    Enabled = false
+                };
+
+                _statementUnderlineControls[block.Uid] = underline;
+                groupBoxWorkSpace.Controls.Add(underline);
+                underline.SendToBack();
+            }
+
+            foreach (Panel panel in _workspaceBlocks.Keys)
+            {
+                panel.BringToFront();
+            }
+
+            foreach (BlockConnectorControl connector in _connectorControlsByChild.Values)
+            {
+                connector.BringToFront();
             }
         }
 
@@ -1516,6 +1711,14 @@ namespace COMP_3951_BlockForge_TechPro
 
         private void ClearWorkspaceBlocks()
         {
+            foreach (Panel underline in _statementUnderlineControls.Values)
+            {
+                groupBoxWorkSpace.Controls.Remove(underline);
+                underline.Dispose();
+            }
+
+            _statementUnderlineControls.Clear();
+
             foreach (BlockConnectorControl connector in _connectorControlsByChild.Values)
             {
                 groupBoxWorkSpace.Controls.Remove(connector);
@@ -1634,6 +1837,24 @@ namespace COMP_3951_BlockForge_TechPro
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
             LoadWorkspaceLayout();
+        }
+
+        private void clearWorkspaceToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            DialogResult result = MessageBox.Show(
+                this,
+                "Are you sure you want to clear the workspace?",
+                "Clear Workspace",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (result != DialogResult.Yes)
+            {
+                return;
+            }
+
+            ClearWorkspaceBlocks();
+            AppendConsoleMessage(ConsoleMessageSeverity.Message, "Workspace cleared.");
         }
 
         /// <summary>
