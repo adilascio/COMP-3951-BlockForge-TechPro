@@ -62,6 +62,7 @@
             toolStripSeparator5 = new ToolStripSeparator();
             aboutToolStripMenuItem = new ToolStripMenuItem();
             debugToolStripMenuItem = new ToolStripMenuItem();
+            executeWorkspaceToolStripMenuItem = new ToolStripMenuItem();
             generateFileToolStripMenuItem = new ToolStripMenuItem();
             loadDummyFileToolStripMenuItem = new ToolStripMenuItem();
             groupBox1 = new GroupBox();
@@ -322,10 +323,18 @@
             // 
             // debugToolStripMenuItem
             // 
-            debugToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { generateFileToolStripMenuItem, loadDummyFileToolStripMenuItem });
+            debugToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { executeWorkspaceToolStripMenuItem, generateFileToolStripMenuItem, loadDummyFileToolStripMenuItem });
             debugToolStripMenuItem.Name = "debugToolStripMenuItem";
             debugToolStripMenuItem.Size = new Size(54, 20);
             debugToolStripMenuItem.Text = "Debug";
+            // 
+            // executeWorkspaceToolStripMenuItem
+            // 
+            executeWorkspaceToolStripMenuItem.Name = "executeWorkspaceToolStripMenuItem";
+            executeWorkspaceToolStripMenuItem.ShortcutKeys = Keys.F5;
+            executeWorkspaceToolStripMenuItem.Size = new Size(188, 22);
+            executeWorkspaceToolStripMenuItem.Text = "Execute Workspace";
+            executeWorkspaceToolStripMenuItem.Click += executeWorkspaceToolStripMenuItem_Click;
             // 
             // generateFileToolStripMenuItem
             // 
@@ -469,6 +478,7 @@
         private Panel panel1;
         private Panel panel2;
         private ToolStripMenuItem debugToolStripMenuItem;
+        private ToolStripMenuItem executeWorkspaceToolStripMenuItem;
         private ToolStripMenuItem generateFileToolStripMenuItem;
         private ToolStripMenuItem loadDummyFileToolStripMenuItem;
     }

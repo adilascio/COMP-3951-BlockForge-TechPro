@@ -49,6 +49,8 @@ namespace COMP_3951_BlockForge_TechPro
         public bool? BoolValue { get; set; }
         public string? ParentBlockUid { get; set; }
         public string? ChildBlockUid { get; set; }
+        public string? PreviousStatementBlockUid { get; set; }
+        public string? NextStatementBlockUid { get; set; }
 
         /// <summary>
         /// Constructor for a CodeBlock.
@@ -71,7 +73,9 @@ namespace COMP_3951_BlockForge_TechPro
             int? intValue = null,
             bool? boolValue = null,
             string? parentBlockUid = null,
-            string? childBlockUid = null)
+            string? childBlockUid = null,
+            string? previousStatementBlockUid = null,
+            string? nextStatementBlockUid = null)
         {
             this.PosX = posX;
             this.PosY = posY;
@@ -86,6 +90,8 @@ namespace COMP_3951_BlockForge_TechPro
             this.BoolValue = boolValue;
             this.ParentBlockUid = parentBlockUid;
             this.ChildBlockUid = childBlockUid;
+            this.PreviousStatementBlockUid = previousStatementBlockUid;
+            this.NextStatementBlockUid = nextStatementBlockUid;
         }
 
         /// <summary>

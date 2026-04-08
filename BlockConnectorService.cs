@@ -68,6 +68,61 @@ namespace COMP_3951_BlockForge_TechPro
 
             block.ParentBlockUid = null;
             block.ChildBlockUid = null;
+            DisconnectStatement(block, blocks);
+        }
+
+        public bool CanConnectStatement(CodeBlock leftBlock, CodeBlock rightBlock)
+        {
+            if (leftBlock.Uid == rightBlock.Uid)
+            {
+                return false;
+            }
+
+            if (!IsStatementBlock(leftBlock) || !IsStatementBlock(rightBlock))
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(leftBlock.NextStatementBlockUid))
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(rightBlock.PreviousStatementBlockUid))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public void ConnectStatement(CodeBlock leftBlock, CodeBlock rightBlock)
+        {
+            if (!CanConnectStatement(leftBlock, rightBlock))
+            {
+                throw new InvalidOperationException("Blocks cannot be connected side-by-side under the current statement rules.");
+            }
+
+            leftBlock.NextStatementBlockUid = rightBlock.Uid;
+            rightBlock.PreviousStatementBlockUid = leftBlock.Uid;
+        }
+
+        public void DisconnectStatement(CodeBlock block, IDictionary<string, CodeBlock> blocks)
+        {
+            if (!string.IsNullOrWhiteSpace(block.PreviousStatementBlockUid) &&
+                blocks.TryGetValue(block.PreviousStatementBlockUid, out CodeBlock? previous))
+            {
+                previous.NextStatementBlockUid = null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(block.NextStatementBlockUid) &&
+                blocks.TryGetValue(block.NextStatementBlockUid, out CodeBlock? next))
+            {
+                next.PreviousStatementBlockUid = null;
+            }
+
+            block.PreviousStatementBlockUid = null;
+            block.NextStatementBlockUid = null;
         }
 
         public void MoveChain(CodeBlock root, IDictionary<string, CodeBlock> blocks, int newGridColumn, int newGridRow)
@@ -91,6 +146,8 @@ namespace COMP_3951_BlockForge_TechPro
         {
             string? parentUid = block.ParentBlockUid;
             string? childUid = block.ChildBlockUid;
+            string? previousStatementUid = block.PreviousStatementBlockUid;
+            string? nextStatementUid = block.NextStatementBlockUid;
 
             Disconnect(block, blocks);
             blocks.Remove(block.Uid);
@@ -103,6 +160,16 @@ namespace COMP_3951_BlockForge_TechPro
             if (!string.IsNullOrWhiteSpace(childUid) && blocks.TryGetValue(childUid, out CodeBlock? child))
             {
                 child.ParentBlockUid = null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(previousStatementUid) && blocks.TryGetValue(previousStatementUid, out CodeBlock? previous))
+            {
+                previous.NextStatementBlockUid = null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(nextStatementUid) && blocks.TryGetValue(nextStatementUid, out CodeBlock? next))
+            {
+                next.PreviousStatementBlockUid = null;
             }
         }
 
@@ -118,6 +185,35 @@ namespace COMP_3951_BlockForge_TechPro
             }
 
             return chain;
+        }
+
+        public CodeBlock GetStatementRoot(CodeBlock block, IDictionary<string, CodeBlock> blocks)
+        {
+            CodeBlock current = block;
+
+            while (!string.IsNullOrWhiteSpace(current.PreviousStatementBlockUid) &&
+                   blocks.TryGetValue(current.PreviousStatementBlockUid, out CodeBlock? previous))
+            {
+                current = previous;
+            }
+
+            return current;
+        }
+
+        public List<CodeBlock> GetStatementChainFrom(CodeBlock block, IDictionary<string, CodeBlock> blocks)
+        {
+            List<CodeBlock> statementChain = new();
+            CodeBlock current = GetStatementRoot(block, blocks);
+            statementChain.Add(current);
+
+            while (!string.IsNullOrWhiteSpace(current.NextStatementBlockUid) &&
+                   blocks.TryGetValue(current.NextStatementBlockUid, out CodeBlock? next))
+            {
+                statementChain.Add(next);
+                current = next;
+            }
+
+            return statementChain;
         }
 
         private void AlignChildToParent(CodeBlock parent, CodeBlock child)
@@ -137,6 +233,23 @@ namespace COMP_3951_BlockForge_TechPro
                 CodeBlockType.If => true,
                 CodeBlockType.While => true,
                 CodeBlockType.Variable => true,
+                _ => false
+            };
+        }
+
+        private static bool IsStatementBlock(CodeBlock block)
+        {
+            return block.BlockType switch
+            {
+                CodeBlockType.Run => false,
+                CodeBlockType.If => true,
+                CodeBlockType.While => true,
+                CodeBlockType.Print => true,
+                CodeBlockType.Variable => true,
+                CodeBlockType.Assignment => true,
+                CodeBlockType.Operator => true,
+                CodeBlockType.Equals => true,
+                CodeBlockType.Input => true,
                 _ => false
             };
         }

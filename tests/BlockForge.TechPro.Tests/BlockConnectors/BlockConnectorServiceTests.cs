@@ -6,6 +6,7 @@ namespace BlockForge.TechPro.Tests.BlockConnectors;
 public sealed class BlockConnectorServiceTests
 {
     private readonly BlockConnectorService _service = new();
+    private readonly StatementChainService _statementService = new();
 
     [TestMethod]
     public void Connect_CompatibleBlocks_AttachSuccessfullyAtValidConnectorPoints()
@@ -156,6 +157,123 @@ public sealed class BlockConnectorServiceTests
         Assert.AreEqual(child.Uid, restoredRoot.ChildBlockUid);
         Assert.AreEqual(root.Uid, restoredBlocks[child.Uid].ParentBlockUid);
         Assert.AreEqual("run();\nSystem.out.println(value);", generatedSource);
+    }
+
+    [TestMethod]
+    public void GetStatementRoot_ReturnsLeftmostBlockInHorizontalStatementChain()
+    {
+        CodeBlock left = new(0, 0, "var-1", 0, 0, CodeBlockType.Variable, "score", VariableBlockType.Int);
+        CodeBlock middle = new(140, 0, "assign-1", 1, 0, CodeBlockType.Assignment, "=");
+        CodeBlock right = new(280, 0, "op-1", 2, 0, CodeBlockType.Operator, "Operator");
+        Dictionary<string, CodeBlock> blocks = new()
+        {
+            [left.Uid] = left,
+            [middle.Uid] = middle,
+            [right.Uid] = right
+        };
+
+        _service.ConnectStatement(left, middle);
+        _service.ConnectStatement(middle, right);
+
+        CodeBlock root = _statementService.GetStatementRoot(right, blocks);
+
+        Assert.AreEqual(left.Uid, root.Uid);
+    }
+
+    [TestMethod]
+    public void GetStatementChainFrom_ReturnsOrderedHorizontalBlocksStartingAtLeftmostRoot()
+    {
+        CodeBlock left = new(0, 0, "var-1", 0, 0, CodeBlockType.Variable, "score", VariableBlockType.Int);
+        CodeBlock middle = new(140, 0, "assign-1", 1, 0, CodeBlockType.Assignment, "=");
+        CodeBlock right = new(280, 0, "op-1", 2, 0, CodeBlockType.Operator, "Operator");
+        Dictionary<string, CodeBlock> blocks = new()
+        {
+            [left.Uid] = left,
+            [middle.Uid] = middle,
+            [right.Uid] = right
+        };
+
+        _service.ConnectStatement(left, middle);
+        _service.ConnectStatement(middle, right);
+
+        List<CodeBlock> statementChain = _statementService.GetStatementChain(middle, blocks);
+
+        CollectionAssert.AreEqual(new[] { left.Uid, middle.Uid, right.Uid }, statementChain.Select(block => block.Uid).ToArray());
+    }
+
+    [TestMethod]
+    public void GetExecutionOrderedStatementRoots_ReturnsLeftmostRowsInVerticalExecutionOrder()
+    {
+        CodeBlock run = new(0, 0, "run-1", 0, 0, CodeBlockType.Run, "Run");
+        CodeBlock print = new(0, 72, "print-1", 0, 1, CodeBlockType.Print, "Print");
+        CodeBlock variable = new(140, 72, "var-1", 1, 1, CodeBlockType.Variable, "score", VariableBlockType.Int);
+        CodeBlock whileBlock = new(0, 144, "while-1", 0, 2, CodeBlockType.While, "While");
+        Dictionary<string, CodeBlock> blocks = new()
+        {
+            [run.Uid] = run,
+            [print.Uid] = print,
+            [variable.Uid] = variable,
+            [whileBlock.Uid] = whileBlock
+        };
+
+        _service.Connect(run, print);
+        _service.Connect(print, whileBlock);
+        _service.ConnectStatement(print, variable);
+
+        List<CodeBlock> roots = _statementService.GetExecutionOrderedStatementRoots(blocks);
+
+        CollectionAssert.AreEqual(new[] { run.Uid, print.Uid, whileBlock.Uid }, roots.Select(block => block.Uid).ToArray());
+    }
+
+    [TestMethod]
+    public void BuildStatementText_ReturnsJoinedTokensForAssignmentStatement()
+    {
+        CodeBlock variable = new(0, 0, "var-1", 0, 1, CodeBlockType.Variable, "score", VariableBlockType.Int);
+        CodeBlock assignment = new(140, 0, "assign-1", 1, 1, CodeBlockType.Assignment, "=");
+        CodeBlock rightVariable = new(280, 0, "var-2", 2, 1, CodeBlockType.Variable, "count", VariableBlockType.Int);
+        CodeBlock op = new(420, 0, "op-1", 3, 1, CodeBlockType.Operator, "Operator", stringValue: "+");
+        CodeBlock rightValue = new(560, 0, "var-3", 4, 1, CodeBlockType.Variable, "step", VariableBlockType.Int);
+        Dictionary<string, CodeBlock> blocks = new()
+        {
+            [variable.Uid] = variable,
+            [assignment.Uid] = assignment,
+            [rightVariable.Uid] = rightVariable,
+            [op.Uid] = op,
+            [rightValue.Uid] = rightValue
+        };
+
+        _service.ConnectStatement(variable, assignment);
+        _service.ConnectStatement(assignment, rightVariable);
+        _service.ConnectStatement(rightVariable, op);
+        _service.ConnectStatement(op, rightValue);
+
+        string statementText = _statementService.BuildStatementText(op, blocks);
+
+        Assert.AreEqual("score = count + step", statementText);
+    }
+
+    [TestMethod]
+    public void BuildStatementText_ReturnsPrintFollowedByExpressionTokens()
+    {
+        CodeBlock print = new(0, 0, "print-1", 0, 1, CodeBlockType.Print, "Print");
+        CodeBlock variable = new(140, 0, "var-1", 1, 1, CodeBlockType.Variable, "score", VariableBlockType.Int);
+        CodeBlock op = new(280, 0, "op-1", 2, 1, CodeBlockType.Operator, "Operator", stringValue: "%");
+        CodeBlock divisor = new(420, 0, "var-2", 3, 1, CodeBlockType.Variable, "two", VariableBlockType.Int);
+        Dictionary<string, CodeBlock> blocks = new()
+        {
+            [print.Uid] = print,
+            [variable.Uid] = variable,
+            [op.Uid] = op,
+            [divisor.Uid] = divisor
+        };
+
+        _service.ConnectStatement(print, variable);
+        _service.ConnectStatement(variable, op);
+        _service.ConnectStatement(op, divisor);
+
+        string statementText = _statementService.BuildStatementText(variable, blocks);
+
+        Assert.AreEqual("Print score % two", statementText);
     }
 }
 

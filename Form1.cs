@@ -21,6 +21,10 @@ namespace COMP_3951_BlockForge_TechPro
         private const int RightPanelMinSize = 240;
         private const int DeleteZoneSize = 28;
         private const int DeleteZoneMargin = 8;
+        private const int InputTypeDropDownWidth = 82;
+        private const int InputBlockInnerPadding = 4;
+        private const int InputBlockMinimumTextWidth = 54;
+        private const int InputBlockDragHandleWidth = 14;
 
         /// <summary>
         /// Calculates snapped block positions for the workspace grid.
@@ -45,6 +49,7 @@ namespace COMP_3951_BlockForge_TechPro
         private readonly BlockConnectorService _blockConnectorService;
         private readonly ProjectFileManager _projectFileManager;
         private readonly WorkspaceSaveNotifier _workspaceSaveNotifier;
+        private readonly WorkspaceExecutionService _workspaceExecutionService;
         private FlowLayoutPanel? _blockBinRow;
         private ToolStrip? _variableToolStrip;
         private SplitContainer? _horizontalSplit;
@@ -61,6 +66,7 @@ namespace COMP_3951_BlockForge_TechPro
             _blockConnectorService = new BlockConnectorService(GridCellWidth, GridCellHeight);
             _projectFileManager = new ProjectFileManager(new PayloadTransformer(5));
             _workspaceSaveNotifier = new WorkspaceSaveNotifier(_workspaceConsole);
+            _workspaceExecutionService = new WorkspaceExecutionService();
             SetupDragDrop();
             SetupDeleteDropZone();
             SetupConsoleWindow();
@@ -373,9 +379,10 @@ namespace COMP_3951_BlockForge_TechPro
             var block5 = MakeTemplateBlock("==", Color.Plum);
             var block6 = MakeTemplateBlock("=", Color.MistyRose);
             var block7 = MakeTemplateBlock("Operator", Color.LightSteelBlue, new OperatorBlock());
+            var block8 = MakeTemplateBlock("Input", Color.Honeydew, new InputBlock());
 
             // Size 
-            block1.Size = block2.Size = block3.Size = block4.Size = block5.Size = block6.Size = block7.Size = new Size(StandardBlockWidth, StandardBlockHeight);
+            block1.Size = block2.Size = block3.Size = block4.Size = block5.Size = block6.Size = block7.Size = block8.Size = new Size(StandardBlockWidth, StandardBlockHeight);
 
             // Small gap between blocks (FlowLayoutPanel uses each control's Margin)
             block1.Margin = new Padding(0, 0, 8, 0);
@@ -385,6 +392,7 @@ namespace COMP_3951_BlockForge_TechPro
             block5.Margin = new Padding(0, 0, 8, 0);
             block6.Margin = new Padding(0, 0, 8, 0);
             block7.Margin = new Padding(0, 0, 8, 0);
+            block8.Margin = new Padding(0, 0, 8, 0);
 
             // Add to the row
             topRow.Controls.Add(block1);
@@ -394,6 +402,7 @@ namespace COMP_3951_BlockForge_TechPro
             topRow.Controls.Add(block5);
             topRow.Controls.Add(block6);
             topRow.Controls.Add(block7);
+            topRow.Controls.Add(block8);
 
             // Add the row to BlockBin
             groupBoxBlockBin.Controls.Add(topRow);
@@ -487,6 +496,7 @@ namespace COMP_3951_BlockForge_TechPro
 
             RegisterWorkspaceBlock(newBlock, snappedPlacement);
             TryAttachBlockToConnector(newBlock);
+            RebuildStatementConnections();
             TryDeleteBlockOnDrop(newBlock);
             _deleteDropZone?.BringToFront();
         }
@@ -502,6 +512,7 @@ namespace COMP_3951_BlockForge_TechPro
             {
                 VariableBlock variableBlock => CloneVariableBlock(variableBlock),
                 OperatorBlock operatorBlock => CloneOperatorBlock(operatorBlock),
+                InputBlock inputBlock => CloneInputBlock(inputBlock),
                 _ => text
             };
 
@@ -585,6 +596,7 @@ namespace COMP_3951_BlockForge_TechPro
                     UpdateStoredBlockPosition(_activeBlock, snappedPlacement);
                     AlignConnectedChildren(_activeBlock);
                     TryAttachBlockToConnector(_activeBlock);
+                    RebuildStatementConnections();
                 }
 
                 _activeBlock.BackColor = _activeBlockOriginalColor;
@@ -644,6 +656,7 @@ namespace COMP_3951_BlockForge_TechPro
             _workspaceBlocks.Remove(blockPanel);
             groupBoxWorkSpace.Controls.Remove(blockPanel);
             blockPanel.Dispose();
+            RebuildStatementConnections();
             AppendConsoleMessage(ConsoleMessageSeverity.Message, $"Deleted block: {blockName}");
             _deleteDropZone.BringToFront();
             return true;
@@ -714,8 +727,19 @@ namespace COMP_3951_BlockForge_TechPro
             return new OperatorBlock(operatorBlock.SelectedOperator);
         }
 
+        private static InputBlock CloneInputBlock(InputBlock inputBlock)
+        {
+            return new InputBlock(inputBlock.PrimitiveType, inputBlock.ValueText);
+        }
+
         private void BuildWorkspaceBlockContent(Panel blockPanel, object workspaceTag, string text)
         {
+            if (workspaceTag is InputBlock inputBlock)
+            {
+                BuildInputBlockContent(blockPanel, inputBlock);
+                return;
+            }
+
             if (workspaceTag is OperatorBlock operatorBlock)
             {
                 ComboBox operatorComboBox = new()
@@ -762,11 +786,144 @@ namespace COMP_3951_BlockForge_TechPro
             label.Click += (s, e) => Block_Click(blockPanel, e);
         }
 
+        private void BuildInputBlockContent(Panel blockPanel, InputBlock inputBlock)
+        {
+            Panel contentPanel = new()
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(InputBlockInnerPadding),
+                BackColor = Color.Transparent
+            };
+
+            Panel dragHandle = new()
+            {
+                Width = InputBlockDragHandleWidth,
+                Cursor = Cursors.SizeAll,
+                BackColor = Color.FromArgb(235, 235, 235)
+            };
+
+            TextBox valueTextBox = new()
+            {
+                BorderStyle = BorderStyle.FixedSingle,
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+                Text = inputBlock.ValueText
+            };
+
+            ComboBox typeComboBox = new()
+            {
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                FlatStyle = FlatStyle.Flat,
+                Width = InputTypeDropDownWidth,
+                Font = new Font("Segoe UI", 9F, FontStyle.Regular)
+            };
+
+            typeComboBox.Items.AddRange(Enum.GetNames(typeof(VariableBlockType)));
+            typeComboBox.SelectedItem = inputBlock.PrimitiveType.ToString();
+            if (typeComboBox.SelectedIndex < 0)
+            {
+                typeComboBox.SelectedIndex = 0;
+            }
+
+            valueTextBox.Leave += (_, _) =>
+            {
+                inputBlock.ValueText = valueTextBox.Text;
+                UpdateStoredInputBlockValues(blockPanel, inputBlock);
+                ResizeInputBlockToFitContent(blockPanel, dragHandle, valueTextBox, typeComboBox);
+            };
+
+            valueTextBox.KeyDown += (_, e) =>
+            {
+                if (e.KeyCode != Keys.Enter)
+                {
+                    return;
+                }
+
+                inputBlock.ValueText = valueTextBox.Text;
+                UpdateStoredInputBlockValues(blockPanel, inputBlock);
+                ResizeInputBlockToFitContent(blockPanel, dragHandle, valueTextBox, typeComboBox);
+                blockPanel.Focus();
+                e.SuppressKeyPress = true;
+            };
+
+            typeComboBox.SelectedIndexChanged += (_, _) =>
+            {
+                if (Enum.TryParse(typeComboBox.SelectedItem?.ToString(), out VariableBlockType selectedType))
+                {
+                    inputBlock.PrimitiveType = selectedType;
+                    UpdateStoredInputBlockValues(blockPanel, inputBlock);
+                    ResizeInputBlockToFitContent(blockPanel, dragHandle, valueTextBox, typeComboBox);
+                }
+            };
+
+            dragHandle.MouseDown += (s, e) => WorkspaceBlock_MouseDown(blockPanel, e);
+            dragHandle.MouseMove += (s, e) => WorkspaceBlock_MouseMove(blockPanel, e);
+            dragHandle.MouseUp += (s, e) => WorkspaceBlock_MouseUp(blockPanel, e);
+            contentPanel.MouseDown += (s, e) => WorkspaceBlock_MouseDown(blockPanel, e);
+            contentPanel.MouseMove += (s, e) => WorkspaceBlock_MouseMove(blockPanel, e);
+            contentPanel.MouseUp += (s, e) => WorkspaceBlock_MouseUp(blockPanel, e);
+            blockPanel.Resize += (_, _) => LayoutInputBlockControls(blockPanel, dragHandle, valueTextBox, typeComboBox);
+
+            contentPanel.Controls.Add(dragHandle);
+            contentPanel.Controls.Add(valueTextBox);
+            contentPanel.Controls.Add(typeComboBox);
+            blockPanel.Controls.Add(contentPanel);
+
+            ResizeInputBlockToFitContent(blockPanel, dragHandle, valueTextBox, typeComboBox);
+        }
+
+        private void LayoutInputBlockControls(Panel blockPanel, Panel dragHandle, TextBox valueTextBox, ComboBox typeComboBox)
+        {
+            int innerHeight = blockPanel.ClientSize.Height - (InputBlockInnerPadding * 2);
+            int comboHeight = Math.Min(24, innerHeight);
+            int top = Math.Max(InputBlockInnerPadding, (blockPanel.ClientSize.Height - comboHeight) / 2);
+            int comboLeft = Math.Max(InputBlockInnerPadding, blockPanel.ClientSize.Width - InputBlockInnerPadding - InputTypeDropDownWidth);
+            int textWidth = Math.Max(
+                InputBlockMinimumTextWidth,
+                comboLeft - (InputBlockInnerPadding * 3) - InputBlockDragHandleWidth);
+
+            dragHandle.Bounds = new Rectangle(InputBlockInnerPadding, InputBlockInnerPadding, InputBlockDragHandleWidth, blockPanel.ClientSize.Height - (InputBlockInnerPadding * 2));
+            valueTextBox.Bounds = new Rectangle(dragHandle.Right + InputBlockInnerPadding, top, textWidth, comboHeight);
+            typeComboBox.Bounds = new Rectangle(comboLeft, top, InputTypeDropDownWidth, comboHeight);
+        }
+
+        private void ResizeInputBlockToFitContent(Panel blockPanel, Panel dragHandle, TextBox valueTextBox, ComboBox typeComboBox)
+        {
+            Size textSize = TextRenderer.MeasureText(
+                string.IsNullOrEmpty(valueTextBox.Text) ? " " : valueTextBox.Text,
+                valueTextBox.Font);
+
+            int desiredTextWidth = Math.Max(InputBlockMinimumTextWidth, textSize.Width + 14);
+            int desiredWidth = desiredTextWidth + InputTypeDropDownWidth + InputBlockDragHandleWidth + (InputBlockInnerPadding * 5);
+            int maximumWidth = blockPanel.Parent?.ClientSize.Width > 0
+                ? Math.Max(StandardBlockWidth, blockPanel.Parent.ClientSize.Width - blockPanel.Left - DeleteZoneMargin)
+                : desiredWidth;
+
+            blockPanel.Width = Math.Clamp(desiredWidth, StandardBlockWidth, maximumWidth);
+            LayoutInputBlockControls(blockPanel, dragHandle, valueTextBox, typeComboBox);
+        }
+
+        private void UpdateStoredInputBlockValues(Panel blockPanel, InputBlock inputBlock)
+        {
+            if (!_workspaceBlocks.TryGetValue(blockPanel, out CodeBlock? codeBlock))
+            {
+                return;
+            }
+
+            codeBlock.VariableType = inputBlock.PrimitiveType;
+            ApplyBlockValues(codeBlock, inputBlock);
+        }
+
         private static string GetBlockDisplayText(object? tagValue)
         {
             if (tagValue is VariableBlock variableBlock)
             {
                 return $"{variableBlock.VariableName} : {variableBlock.VariableType}";
+            }
+
+            if (tagValue is InputBlock inputBlock)
+            {
+                string displayValue = string.IsNullOrWhiteSpace(inputBlock.ValueText) ? "Input" : inputBlock.ValueText;
+                return $"{displayValue} : {inputBlock.PrimitiveType}";
             }
 
             if (tagValue is OperatorBlock)
@@ -799,12 +956,18 @@ namespace COMP_3951_BlockForge_TechPro
                 CodeBlockType.Assignment => Color.MistyRose,
                 CodeBlockType.Operator => Color.LightSteelBlue,
                 CodeBlockType.Equals => Color.Plum,
+                CodeBlockType.Input => Color.Honeydew,
                 _ => Color.LightGray
             };
         }
 
         private static object CreateWorkspaceTagFromCodeBlock(CodeBlock codeBlock)
         {
+            if (codeBlock.BlockType == CodeBlockType.Input)
+            {
+                return new InputBlock(codeBlock.VariableType ?? VariableBlockType.String, codeBlock.StringValue ?? string.Empty);
+            }
+
             if (codeBlock.BlockType != CodeBlockType.Variable || !codeBlock.VariableType.HasValue)
             {
                 return codeBlock.BlockType == CodeBlockType.Operator
@@ -828,6 +991,11 @@ namespace COMP_3951_BlockForge_TechPro
                 return (CodeBlockType.Variable, variableBlock.VariableName, variableBlock.VariableType);
             }
 
+            if (tagValue is InputBlock inputBlock)
+            {
+                return (CodeBlockType.Input, "Input", inputBlock.PrimitiveType);
+            }
+
             string blockName = tagValue?.ToString() ?? "Block";
             if (tagValue is OperatorBlock)
             {
@@ -842,6 +1010,7 @@ namespace COMP_3951_BlockForge_TechPro
                 "Print" => CodeBlockType.Print,
                 "=" => CodeBlockType.Assignment,
                 "==" => CodeBlockType.Equals,
+                "Input" => CodeBlockType.Input,
                 _ => CodeBlockType.Unknown
             };
 
@@ -859,6 +1028,25 @@ namespace COMP_3951_BlockForge_TechPro
             if (tagValue is OperatorBlock operatorBlock)
             {
                 codeBlock.UpdateVariableValues(stringValue: operatorBlock.SelectedOperator);
+                return;
+            }
+
+            if (tagValue is InputBlock inputBlock)
+            {
+                int? parsedInt = null;
+                bool? parsedBool = null;
+
+                if (inputBlock.PrimitiveType == VariableBlockType.Int && int.TryParse(inputBlock.ValueText, out int intValue))
+                {
+                    parsedInt = intValue;
+                }
+                else if (inputBlock.PrimitiveType == VariableBlockType.Bool && bool.TryParse(inputBlock.ValueText, out bool boolValue))
+                {
+                    parsedBool = boolValue;
+                }
+
+                codeBlock.VariableType = inputBlock.PrimitiveType;
+                codeBlock.UpdateVariableValues(inputBlock.ValueText, parsedInt, parsedBool);
                 return;
             }
 
@@ -1076,6 +1264,38 @@ namespace COMP_3951_BlockForge_TechPro
             }
         }
 
+        private void RebuildStatementConnections()
+        {
+            Dictionary<string, CodeBlock> blocksByUid = _workspaceBlocks.Values.ToDictionary(workspaceBlock => workspaceBlock.Uid, workspaceBlock => workspaceBlock);
+
+            foreach (CodeBlock block in blocksByUid.Values)
+            {
+                block.PreviousStatementBlockUid = null;
+                block.NextStatementBlockUid = null;
+            }
+
+            foreach (IGrouping<int, CodeBlock> rowGroup in blocksByUid.Values.GroupBy(block => block.GridRow))
+            {
+                List<CodeBlock> orderedRow = rowGroup
+                    .OrderBy(block => block.GridColumn)
+                    .ToList();
+
+                for (int i = 0; i < orderedRow.Count - 1; i++)
+                {
+                    CodeBlock leftBlock = orderedRow[i];
+                    CodeBlock rightBlock = orderedRow[i + 1];
+
+                    bool areAdjacentColumns = leftBlock.GridColumn + 1 == rightBlock.GridColumn;
+                    if (!areAdjacentColumns || !_blockConnectorService.CanConnectStatement(leftBlock, rightBlock))
+                    {
+                        continue;
+                    }
+
+                    _blockConnectorService.ConnectStatement(leftBlock, rightBlock);
+                }
+            }
+        }
+
         private void EnsureConnectorVisual(Panel parentPanel, Panel childPanel)
         {
             if (_connectorControlsByChild.ContainsKey(childPanel))
@@ -1247,7 +1467,9 @@ namespace COMP_3951_BlockForge_TechPro
                     source.IntValue,
                     source.BoolValue,
                     source.ParentBlockUid,
-                    source.ChildBlockUid);
+                    source.ChildBlockUid,
+                    source.PreviousStatementBlockUid,
+                    source.NextStatementBlockUid);
 
                 ApplyBlockValues(snapshot, tagValue);
                 blocks.Add(snapshot);
@@ -1377,7 +1599,9 @@ namespace COMP_3951_BlockForge_TechPro
                         codeBlock.IntValue,
                         codeBlock.BoolValue,
                         codeBlock.ParentBlockUid,
-                        codeBlock.ChildBlockUid);
+                        codeBlock.ChildBlockUid,
+                        codeBlock.PreviousStatementBlockUid,
+                        codeBlock.NextStatementBlockUid);
 
                     _workspaceBlocks[panel] = storedBlock;
                 }
@@ -1390,6 +1614,8 @@ namespace COMP_3951_BlockForge_TechPro
                         RepositionConnectorForChild(panel);
                     }
                 }
+
+                RebuildStatementConnections();
 
                 _deleteDropZone?.BringToFront();
                 AppendConsoleMessage(ConsoleMessageSeverity.Message, $"Loaded workspace: {project.ProjectName}");
@@ -1408,6 +1634,38 @@ namespace COMP_3951_BlockForge_TechPro
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
             LoadWorkspaceLayout();
+        }
+
+        /// <summary>
+        /// Executes the current workspace using the lightweight in-app interpreter.
+        /// </summary>
+        private void executeWorkspaceToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Dictionary<string, CodeBlock> blocksByUid = _workspaceBlocks.Values
+                .ToDictionary(block => block.Uid, block => block);
+
+            try
+            {
+                WorkspaceExecutionResult result = _workspaceExecutionService.Execute(blocksByUid);
+
+                AppendConsoleMessage(ConsoleMessageSeverity.Message, "Execution started.");
+
+                foreach (string outputLine in result.OutputLines)
+                {
+                    AppendConsoleMessage(ConsoleMessageSeverity.Message, $"Output: {outputLine}");
+                }
+
+                foreach (string diagnostic in result.Diagnostics)
+                {
+                    AppendConsoleMessage(ConsoleMessageSeverity.Warning, diagnostic);
+                }
+
+                AppendConsoleMessage(ConsoleMessageSeverity.Message, "Execution finished.");
+            }
+            catch (Exception ex)
+            {
+                AppendConsoleMessage(ConsoleMessageSeverity.Warning, $"Execution failed: {ex.Message}");
+            }
         }
 
         private void generateDummyFile(Object sender, EventArgs e)
