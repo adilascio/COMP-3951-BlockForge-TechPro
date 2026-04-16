@@ -10,6 +10,8 @@ namespace COMP_3951_BlockForge_TechPro
         Assignment,
         Operator,
         Equals,
+        LessThan,
+        GreaterThan,
         Variable,
         Input
     }

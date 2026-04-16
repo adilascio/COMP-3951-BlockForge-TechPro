@@ -249,6 +249,8 @@ namespace COMP_3951_BlockForge_TechPro
                 CodeBlockType.Assignment => true,
                 CodeBlockType.Operator => true,
                 CodeBlockType.Equals => true,
+                CodeBlockType.LessThan => true,
+                CodeBlockType.GreaterThan => true,
                 CodeBlockType.Input => true,
                 _ => false
             };

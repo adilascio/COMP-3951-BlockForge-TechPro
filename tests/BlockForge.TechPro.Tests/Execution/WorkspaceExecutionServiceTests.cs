@@ -110,6 +110,26 @@ public sealed class WorkspaceExecutionServiceTests
     }
 
     [TestMethod]
+    public void Execute_VariableComparedWithLessThanOrEqualInput_DoesNotProduceDiagnostics()
+    {
+        CodeBlock run = new(0, 0, "run-1", 0, 0, CodeBlockType.Run, "Run");
+        CodeBlock score = new(0, 72, "score-1", 0, 1, CodeBlockType.Variable, "score", VariableBlockType.Int, intValue: 42);
+        CodeBlock lessThan = new(140, 72, "lt-1", 1, 1, CodeBlockType.LessThan, "<=", stringValue: "<=");
+        CodeBlock input = new(280, 72, "input-1", 2, 1, CodeBlockType.Input, "Input", VariableBlockType.Int, stringValue: "42", intValue: 42);
+
+        Dictionary<string, CodeBlock> blocks = CreateBlocks(run, score, lessThan, input);
+
+        _connectorService.Connect(run, score);
+        _connectorService.ConnectStatement(score, lessThan);
+        _connectorService.ConnectStatement(lessThan, input);
+
+        WorkspaceExecutionResult result = _service.Execute(blocks);
+
+        Assert.AreEqual(0, result.OutputLines.Count);
+        Assert.AreEqual(0, result.Diagnostics.Count);
+    }
+
+    [TestMethod]
     public void Execute_DivideByZeroExpression_ThrowsHelpfulError()
     {
         CodeBlock run = new(0, 0, "run-1", 0, 0, CodeBlockType.Run, "Run");

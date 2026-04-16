@@ -404,7 +404,7 @@ namespace COMP_3951_BlockForge_TechPro
             {
                 Dock = DockStyle.Top,
                 AutoSize = true,
-                WrapContents = false,
+                WrapContents = true,
                 FlowDirection = FlowDirection.LeftToRight,
                 Padding = new Padding(10, 10, 10, 10), // space from the groupbox border/title
                 BackColor = Color.Transparent
@@ -419,9 +419,11 @@ namespace COMP_3951_BlockForge_TechPro
             var block6 = MakeTemplateBlock("=", Color.MistyRose);
             var block7 = MakeTemplateBlock("Operator", Color.LightSteelBlue, new OperatorBlock());
             var block8 = MakeTemplateBlock("Input", Color.Honeydew, new InputBlock());
+            var block9 = MakeTemplateBlock("<", Color.Thistle, new RelationalOperatorBlock(RelationalOperatorBlock.LessThanOperators, "<"));
+            var block10 = MakeTemplateBlock(">", Color.LightPink, new RelationalOperatorBlock(RelationalOperatorBlock.GreaterThanOperators, ">"));
 
             // Size 
-            block1.Size = block2.Size = block3.Size = block4.Size = block5.Size = block6.Size = block7.Size = block8.Size = new Size(StandardBlockWidth, StandardBlockHeight);
+            block1.Size = block2.Size = block3.Size = block4.Size = block5.Size = block6.Size = block7.Size = block8.Size = block9.Size = block10.Size = new Size(StandardBlockWidth, StandardBlockHeight);
 
             // Small gap between blocks (FlowLayoutPanel uses each control's Margin)
             block1.Margin = new Padding(0, 0, 8, 0);
@@ -432,6 +434,8 @@ namespace COMP_3951_BlockForge_TechPro
             block6.Margin = new Padding(0, 0, 8, 0);
             block7.Margin = new Padding(0, 0, 8, 0);
             block8.Margin = new Padding(0, 0, 8, 0);
+            block9.Margin = new Padding(0, 0, 8, 0);
+            block10.Margin = new Padding(0, 0, 8, 0);
 
             // Add to the row
             topRow.Controls.Add(block1);
@@ -442,6 +446,8 @@ namespace COMP_3951_BlockForge_TechPro
             topRow.Controls.Add(block6);
             topRow.Controls.Add(block7);
             topRow.Controls.Add(block8);
+            topRow.Controls.Add(block9);
+            topRow.Controls.Add(block10);
 
             // Add the row to BlockBin
             groupBoxBlockBin.Controls.Add(topRow);
@@ -551,6 +557,7 @@ namespace COMP_3951_BlockForge_TechPro
             {
                 VariableBlock variableBlock => CloneVariableBlock(variableBlock),
                 OperatorBlock operatorBlock => CloneOperatorBlock(operatorBlock),
+                RelationalOperatorBlock relationalOperatorBlock => CloneRelationalOperatorBlock(relationalOperatorBlock),
                 InputBlock inputBlock => CloneInputBlock(inputBlock),
                 _ => text
             };
@@ -770,8 +777,44 @@ namespace COMP_3951_BlockForge_TechPro
             return new InputBlock(inputBlock.PrimitiveType, inputBlock.ValueText);
         }
 
+        private static RelationalOperatorBlock CloneRelationalOperatorBlock(RelationalOperatorBlock relationalOperatorBlock)
+        {
+            return new RelationalOperatorBlock(relationalOperatorBlock.SupportedOperators, relationalOperatorBlock.SelectedOperator);
+        }
+
         private void BuildWorkspaceBlockContent(Panel blockPanel, object workspaceTag, string text)
         {
+            if (workspaceTag is RelationalOperatorBlock relationalOperatorBlock)
+            {
+                ComboBox relationalOperatorComboBox = new()
+                {
+                    Dock = DockStyle.Fill,
+                    DropDownStyle = ComboBoxStyle.DropDownList,
+                    Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                    FlatStyle = FlatStyle.Flat
+                };
+
+                relationalOperatorComboBox.Items.AddRange(relationalOperatorBlock.SupportedOperators);
+                relationalOperatorComboBox.SelectedItem = relationalOperatorBlock.SelectedOperator;
+                if (relationalOperatorComboBox.SelectedIndex < 0)
+                {
+                    relationalOperatorComboBox.SelectedIndex = 0;
+                    relationalOperatorBlock.SelectedOperator = relationalOperatorComboBox.SelectedItem?.ToString() ?? relationalOperatorBlock.SupportedOperators[0];
+                }
+
+                relationalOperatorComboBox.SelectedIndexChanged += (_, _) =>
+                {
+                    relationalOperatorBlock.SelectedOperator = relationalOperatorComboBox.SelectedItem?.ToString() ?? relationalOperatorBlock.SupportedOperators[0];
+                    if (_workspaceBlocks.TryGetValue(blockPanel, out CodeBlock? codeBlock))
+                    {
+                        codeBlock.UpdateVariableValues(stringValue: relationalOperatorBlock.SelectedOperator);
+                    }
+                };
+
+                blockPanel.Controls.Add(relationalOperatorComboBox);
+                return;
+            }
+
             if (workspaceTag is InputBlock inputBlock)
             {
                 BuildInputBlockContent(blockPanel, inputBlock);
@@ -964,6 +1007,11 @@ namespace COMP_3951_BlockForge_TechPro
                 return $"{displayValue} : {inputBlock.PrimitiveType}";
             }
 
+            if (tagValue is RelationalOperatorBlock relationalOperatorBlock)
+            {
+                return relationalOperatorBlock.SelectedOperator;
+            }
+
             if (tagValue is OperatorBlock)
             {
                 return "Operator";
@@ -994,6 +1042,8 @@ namespace COMP_3951_BlockForge_TechPro
                 CodeBlockType.Assignment => Color.MistyRose,
                 CodeBlockType.Operator => Color.LightSteelBlue,
                 CodeBlockType.Equals => Color.Plum,
+                CodeBlockType.LessThan => Color.Thistle,
+                CodeBlockType.GreaterThan => Color.LightPink,
                 CodeBlockType.Input => Color.Honeydew,
                 _ => Color.LightGray
             };
@@ -1001,6 +1051,16 @@ namespace COMP_3951_BlockForge_TechPro
 
         private static object CreateWorkspaceTagFromCodeBlock(CodeBlock codeBlock)
         {
+            if (codeBlock.BlockType == CodeBlockType.LessThan)
+            {
+                return new RelationalOperatorBlock(RelationalOperatorBlock.LessThanOperators, codeBlock.StringValue ?? "<");
+            }
+
+            if (codeBlock.BlockType == CodeBlockType.GreaterThan)
+            {
+                return new RelationalOperatorBlock(RelationalOperatorBlock.GreaterThanOperators, codeBlock.StringValue ?? ">");
+            }
+
             if (codeBlock.BlockType == CodeBlockType.Input)
             {
                 return new InputBlock(codeBlock.VariableType ?? VariableBlockType.String, codeBlock.StringValue ?? string.Empty);
@@ -1034,6 +1094,14 @@ namespace COMP_3951_BlockForge_TechPro
                 return (CodeBlockType.Input, "Input", inputBlock.PrimitiveType);
             }
 
+            if (tagValue is RelationalOperatorBlock relationalOperatorBlock)
+            {
+                CodeBlockType relationalBlockType = relationalOperatorBlock.SupportedOperators.Contains("<=") || relationalOperatorBlock.SupportedOperators.Contains("<")
+                    ? CodeBlockType.LessThan
+                    : CodeBlockType.GreaterThan;
+                return (relationalBlockType, relationalOperatorBlock.SelectedOperator, null);
+            }
+
             string blockName = tagValue?.ToString() ?? "Block";
             if (tagValue is OperatorBlock)
             {
@@ -1048,6 +1116,8 @@ namespace COMP_3951_BlockForge_TechPro
                 "Print" => CodeBlockType.Print,
                 "=" => CodeBlockType.Assignment,
                 "==" => CodeBlockType.Equals,
+                "<" => CodeBlockType.LessThan,
+                ">" => CodeBlockType.GreaterThan,
                 "Input" => CodeBlockType.Input,
                 _ => CodeBlockType.Unknown
             };
@@ -1066,6 +1136,12 @@ namespace COMP_3951_BlockForge_TechPro
             if (tagValue is OperatorBlock operatorBlock)
             {
                 codeBlock.UpdateVariableValues(stringValue: operatorBlock.SelectedOperator);
+                return;
+            }
+
+            if (tagValue is RelationalOperatorBlock relationalOperatorBlock)
+            {
+                codeBlock.UpdateVariableValues(stringValue: relationalOperatorBlock.SelectedOperator);
                 return;
             }
 

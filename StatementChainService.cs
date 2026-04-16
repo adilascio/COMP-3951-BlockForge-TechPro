@@ -112,6 +112,8 @@ namespace COMP_3951_BlockForge_TechPro
                 CodeBlockType.Assignment => "=",
                 CodeBlockType.Operator => string.IsNullOrWhiteSpace(block.StringValue) ? "+" : block.StringValue,
                 CodeBlockType.Equals => "==",
+                CodeBlockType.LessThan => string.IsNullOrWhiteSpace(block.StringValue) ? "<" : block.StringValue,
+                CodeBlockType.GreaterThan => string.IsNullOrWhiteSpace(block.StringValue) ? ">" : block.StringValue,
                 CodeBlockType.Print => "Print",
                 CodeBlockType.If => "If",
                 CodeBlockType.While => "While",

@@ -161,7 +161,10 @@ namespace COMP_3951_BlockForge_TechPro
 
         private static bool IsOperatorBlock(CodeBlockType blockType)
         {
-            return blockType == CodeBlockType.Operator || blockType == CodeBlockType.Equals;
+            return blockType == CodeBlockType.Operator ||
+                   blockType == CodeBlockType.Equals ||
+                   blockType == CodeBlockType.LessThan ||
+                   blockType == CodeBlockType.GreaterThan;
         }
 
         private static void UpdateMatchingVariableBlocks(
@@ -266,6 +269,8 @@ namespace COMP_3951_BlockForge_TechPro
             {
                 CodeBlockType.Operator => string.IsNullOrWhiteSpace(block.StringValue) ? "+" : block.StringValue!,
                 CodeBlockType.Equals => "==",
+                CodeBlockType.LessThan => string.IsNullOrWhiteSpace(block.StringValue) ? "<" : block.StringValue!,
+                CodeBlockType.GreaterThan => string.IsNullOrWhiteSpace(block.StringValue) ? ">" : block.StringValue!,
                 _ => throw new InvalidOperationException($"Unsupported operator block: {block.BlockType}.")
             };
         }
@@ -280,8 +285,17 @@ namespace COMP_3951_BlockForge_TechPro
                 "/" => ApplyDivision(left, right),
                 "%" => ApplyModulo(left, right),
                 "==" => Equals(left, right),
+                "<" => CompareNumeric(left, right) < 0,
+                "<=" => CompareNumeric(left, right) <= 0,
+                ">" => CompareNumeric(left, right) > 0,
+                ">=" => CompareNumeric(left, right) >= 0,
                 _ => throw new InvalidOperationException($"Unsupported operator '{op}'.")
             };
+        }
+
+        private static int CompareNumeric(object left, object right)
+        {
+            return Convert.ToInt32(left).CompareTo(Convert.ToInt32(right));
         }
 
         private static object ApplyAddition(object left, object right)
