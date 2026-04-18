@@ -7,10 +7,18 @@ namespace COMP_3951_BlockForge_TechPro
     /// <summary>
     /// Executes the current workspace in-memory using the existing vertical flow and horizontal statement links.
     /// </summary>
+    /// <remarks>
+    /// Recent execution/interpreter work completed in this chat by Asher Drybrough, A01412779.
+    /// </remarks>
     public sealed class WorkspaceExecutionService
     {
         private readonly StatementChainService _statementChainService = new();
 
+        /// <summary>
+        /// Executes the current workspace by following the Run block's vertical chain and evaluating each horizontal statement row.
+        /// </summary>
+        /// <param name="blocks">The workspace blocks keyed by UID.</param>
+        /// <returns>The captured output, diagnostics, and runtime variable state for the execution pass.</returns>
         public WorkspaceExecutionResult Execute(IDictionary<string, CodeBlock> blocks)
         {
             WorkspaceExecutionResult result = new();
@@ -354,6 +362,9 @@ namespace COMP_3951_BlockForge_TechPro
     /// <summary>
     /// Stores the output and runtime variable state produced by a lightweight workspace execution pass.
     /// </summary>
+    /// <remarks>
+    /// Recent execution/interpreter work completed in this chat by Asher Drybrough, A01412779.
+    /// </remarks>
     public sealed class WorkspaceExecutionResult
     {
         public List<string> OutputLines { get; } = new();
